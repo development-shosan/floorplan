@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 会社・チームを管理するモデル
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members   User[]   // 会社は複数のユーザーを持つ
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  email      String    @unique
+  name       String?
+  password   String?   // 招待承諾時に設定するためオプショナルに
+  role       Role      @default(MEMBER)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  histories  History[]
+
+  // UserとCompanyを紐付ける
+  companyId  Int
+  company    Company   @relation(fields: [companyId], references: [id])
+
+  // 招待情報を紐付ける
+  invitation   Invitation? @relation(fields: [invitationId], references: [id])
+  invitationId String?     @unique
+}
+
+model History {
+  id                Int      @id @default(autoincrement())
+  userId            Int
+  conditions        Json
+  generatedImageUrl String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ユーザー招待を管理するモデル
+model Invitation {
+  id         String    @id @default(cuid())
+  email      String    @unique
+  token      String    @unique
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+  
+  user       User?
+}
+
+// 役割(Role)を更新
+enum Role {
+  MEMBER        // 一般メンバー
+  COMPANY_ADMIN // 会社管理者
+  SYSTEM_ADMIN  // システム全体管理者
+}

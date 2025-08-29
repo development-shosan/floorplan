@@ -1,0 +1,24 @@
+{
+  "recommendations": [
+    // General
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "EditorConfig.EditorConfig",
+    "eamodio.gitlens",
+    "GitHub.copilot",
+
+    // Docker
+    "ms-azuretools.vscode-docker",
+
+    // Frontend
+    "bradlc.vscode-tailwindcss",
+
+    // Backend
+    "Prisma.prisma",
+
+    // Python
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.black-formatter"
+  ]
+}

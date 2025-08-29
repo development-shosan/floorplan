@@ -1,0 +1,92 @@
+# S3シミュレーター (MinIO) を追加した Docker Compose ファイル
+version: '3.8'
+
+services:
+  # frontendサービスは変更なし
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    depends_on:
+      - backend
+    networks:
+      - crm-network
+
+  # backendサービスはMinIOに接続するように修正
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}
+      - AWS_ACCESS_KEY_ID=minio-access-key # MinIO接続用のキーに変更
+      - AWS_SECRET_ACCESS_KEY=minio-secret-key # MinIO接続用のシークレットキーに変更
+      - AWS_REGION=${AWS_REGION}
+      - PYTHON_API_URL=http://python-backend:8000
+      - AWS_ENDPOINT=http://minio:9000 # MinIOコンテナに接続するエンドポイントを追加
+    depends_on:
+      - db
+      - python-backend
+      - minio # MinIOサービスへの依存関係を追加
+    networks:
+      - crm-network
+
+  python-backend:
+    build:
+      context: ./python
+    volumes:
+      - ./python:/app
+    networks:
+      - crm-network
+
+  db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - crm-network
+
+  # 新しいS3シミュレーター (MinIO) サービスを追加
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001" # Web UI用のポート
+    ports:
+      - "9000:9000" # S3 APIポート
+      - "9001:9001" # Webコンソール用ポート
+    environment:
+      - MINIO_ACCESS_KEY=minio-access-key # アクセスキー
+      - MINIO_SECRET_KEY=minio-secret-key # シークレットキー
+    volumes:
+      - minio-data:/data # データ永続化のためのボリューム
+    networks:
+      - crm-network
+    
+networks:
+  crm-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  minio-data:
