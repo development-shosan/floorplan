@@ -5,7 +5,8 @@
   "scripts": {
     "test": "jest",
     "setup": "npm install prisma --save-dev && npx prisma init --datasource-provider mysql",
-    "dev": "ts-node-dev --respawn src/app.ts"
+    "dev": "ts-node-dev --respawn src/app.ts",
+    "docker:start": "npx prisma migrate deploy && npm run dev"
   },
   "keywords": [],
   "author": "",

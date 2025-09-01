@@ -135,7 +135,7 @@ docker-compose up --build
 
 1.  **`backend` コンテナのシェルに接続:**
     ```bash
-    docker-compose exec backend bash
+    docker-compose exec backend sh
     ```
 2.  **コンテナ内でPrismaマイグレーションを実行:**
     ```bash

@@ -20,10 +20,12 @@ services:
     networks:
       - crm-network
 
-  # backendサービスはMinIOに接続するように修正
+  # backendサービスはDBの準備を待ってからマイグレーションを実行するように修正
   backend:
     build:
       context: ./backend
+    # [注意] backend/package.json に "docker:start": "npx prisma migrate deploy && (npm run startなどでサーバーを起動)" のようなスクリプトが必要です
+    command: npm run docker:start
     ports:
       - "4000:4000"
     volumes:
@@ -39,9 +41,12 @@ services:
       - PYTHON_API_URL=http://python-backend:8000
       - AWS_ENDPOINT=http://minio:9000 # MinIOコンテナに接続するエンドポイントを追加
     depends_on:
-      - db
-      - python-backend
-      - minio # MinIOサービスへの依存関係を追加
+      db: # [修正] dbサービスがhealthyになるまで待機
+        condition: service_healthy
+      python-backend:
+        condition: service_started
+      minio: # MinIOサービスへの依存関係を追加
+        condition: service_started
     networks:
       - crm-network
 
@@ -65,6 +70,13 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./mysql:/docker-entrypoint-initdb.d
+    # [追加] DBが準備完了か確認するためのhealthcheck
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       - crm-network
 
