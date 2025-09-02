@@ -42,7 +42,7 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-white p-4">
+    <>
       <div className="w-full max-w-[400px] rounded-lg bg-gray-50 shadow-sm px-5 py-6 border-2 border-dashed border-gray-300">
         {/* タイトル */}
         <div className="text-center mb-6">
@@ -161,7 +161,7 @@ const LoginForm: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
