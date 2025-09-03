@@ -1,15 +1,18 @@
-import '@testing-library/jest-dom'
-import { render, screen } from '@testing-library/react'
-import Page from '../page'
+/**
+ * @jest-environment jsdom
+ */
+import * as nextNavigation from "next/navigation";
+import HomePage from "../page";
 
-describe('Home Page', () => {
-  it('renders the main content', () => {
-    render(<Page />)
+// Mock setup
+jest.mock("next/navigation", () => ({
+  redirect: jest.fn(),
+}));
 
-    const mainElement = screen.getByRole('main');
-    expect(mainElement).toBeInTheDocument();
-
-    const nextLogo = screen.getByAltText('Next.js logo');
-    expect(nextLogo).toBeInTheDocument();
-  })
-})
+// Tests
+describe("Home Page", () => {
+  it("redirects to /login", () => {
+    HomePage();
+    expect(nextNavigation.redirect).toHaveBeenCalledWith("/login");
+  });
+});
