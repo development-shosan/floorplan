@@ -1,11 +1,11 @@
 // APIリクエストを送信するための共通関数をここに定義します。
 // これにより、fetchの呼び出し元で毎回ヘッダーやエラーハンドリングを記述する必要がなくなります。
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 async function fetchApi(path: string, options: RequestInit = {}) {
   const headers = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...options.headers,
   };
 
@@ -23,7 +23,7 @@ async function fetchApi(path: string, options: RequestInit = {}) {
   if (!response.ok) {
     // エラーレスポンスをパースして、より詳細なエラー情報を提供する
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'API request failed');
+    throw new Error(errorData.message || "API request failed");
   }
 
   return response.json();
@@ -33,13 +33,25 @@ async function fetchApi(path: string, options: RequestInit = {}) {
 
 // 例: チームメンバーを取得するAPI
 export const getTeamMembers = () => {
-  return fetchApi('/api/admin/team/members', { method: 'GET' });
+  return fetchApi("/api/admin/team/members", { method: "GET" });
 };
 
 // 例: 新しいメンバーを作成するAPI
-export const createTeamMember = (data: { name: string; email: string; password: string }) => {
-  return fetchApi('/api/admin/team/members', {
-    method: 'POST',
+export const createTeamMember = (data: {
+  name: string;
+  email: string;
+  password: string;
+}) => {
+  return fetchApi("/api/admin/team/members", {
+    method: "POST",
     body: JSON.stringify(data),
+  });
+};
+
+// ログイン
+export const loginUser = (email: string, password: string) => {
+  return fetchApi("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
   });
 };

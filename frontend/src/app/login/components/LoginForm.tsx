@@ -1,15 +1,22 @@
 "use client";
 
+import { LoginResponse, useUser } from "@/hooks/userContext";
+import { loginUser } from "@/lib/api";
+import { useRouter } from "next/navigation";
 import React, { useState, FormEvent } from "react";
 
 // ログイン
 const LoginForm: React.FC = () => {
+  const router = useRouter();
+  const { setUser } = useUser();
+
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [emailError, setEmailError] = useState<string>("");
   const [passwordError, setPasswordError] = useState<string>("");
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
-  const [rememberMe, setRememberMe] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [loginError, setLoginError] = useState<string>("");
 
   // バリデーションチェック
   const validateEmail = (email: string): boolean => {
@@ -17,6 +24,7 @@ const LoginForm: React.FC = () => {
     return re.test(String(email).toLowerCase());
   };
 
+  // ログイン
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -39,6 +47,23 @@ const LoginForm: React.FC = () => {
     }
 
     if (!isValid) return;
+
+    setLoading(true);
+
+    try {
+      // ログインAPI
+      const data: LoginResponse = await loginUser(email, password);
+
+      setUser(data);
+
+      // ログイン成功したらHOME画面に遷移
+      router.push("/home");
+    } catch (err) {
+      console.error(err);
+      setLoginError("メールアドレスまたはパスワードが正しくありません");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -99,12 +124,10 @@ const LoginForm: React.FC = () => {
           <div className="mb-6 flex items-center text-sm text-gray-700">
             <input
               type="checkbox"
-              id="remember"
+              id="checkbox"
               className="h-4 w-4 text-[#667eea] border-gray-300 rounded focus:ring-blue-400"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
             />
-            <label htmlFor="remember" className="ml-2 block">
+            <label htmlFor="checkbox" className="ml-2 block">
               ログイン状態を保持する
             </label>
           </div>
@@ -113,7 +136,7 @@ const LoginForm: React.FC = () => {
             type="submit"
             className="w-full bg-[#667eea] hover:bg-[#5a6cdb] text-white font-bold py-2 px-4 rounded-sm transition duration-300"
           >
-            ログイン
+            {loading ? "ログイン中..." : "ログイン"}
           </button>
         </form>
 
@@ -131,11 +154,11 @@ const LoginForm: React.FC = () => {
           </a>
         </div>
 
-        {/* エラー表示 */}
-        {(emailError || passwordError) && (
+        {/* ログインエラー表示 */}
+        {loginError && (
           <div className="mt-6 p-3 bg-[#FDF9F2] border-l-4 border-[#E5933C] rounded-sm">
             <p className="flex items-center text-[#B07020] text-[14px]">
-              ⚠️ エラー: メールアドレスまたはパスワードが正しくありません
+              ⚠️ エラー: {loginError}
             </p>
           </div>
         )}
