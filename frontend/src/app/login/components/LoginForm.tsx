@@ -1,7 +1,7 @@
 "use client";
 
-import { UserRole } from "@/constants/roles";
 import { LoginResponse, useUser } from "@/hooks/userContext";
+import { loginUser } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import React, { useState, FormEvent, useEffect } from "react";
 
@@ -59,17 +59,9 @@ const LoginForm: React.FC = () => {
 
     try {
       // ログインAPI
-      // const data: LoginResponse = await loginUser(email, password);
+      const data: LoginResponse = await loginUser(email, password);
 
-      // setUser(data);
-
-      const dummyData: LoginResponse = {
-        id: 1,
-        name: "テストユーザー",
-        token: "123123123123",
-        role: UserRole.MEMBER,
-      };
-      setUser(dummyData);
+      setUser(data);
 
       // ログイン成功したらHOME画面に遷移
       router.push("/home");
