@@ -1,14 +1,14 @@
 "use client";
 
+import { UserRole } from "@/constants/roles";
 import { LoginResponse, useUser } from "@/hooks/userContext";
-import { loginUser } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import React, { useState, FormEvent } from "react";
+import React, { useState, FormEvent, useEffect } from "react";
 
 // ログイン
 const LoginForm: React.FC = () => {
   const router = useRouter();
-  const { setUser } = useUser();
+  const { user, setUser } = useUser();
 
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -17,6 +17,13 @@ const LoginForm: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>("");
+
+  // すでにログインしている場合は、ホーム画面に遷移
+  useEffect(() => {
+    if (user) {
+      router.push("/home");
+    }
+  }, [user, router]);
 
   // バリデーションチェック
   const validateEmail = (email: string): boolean => {
@@ -52,9 +59,17 @@ const LoginForm: React.FC = () => {
 
     try {
       // ログインAPI
-      const data: LoginResponse = await loginUser(email, password);
+      // const data: LoginResponse = await loginUser(email, password);
 
-      setUser(data);
+      // setUser(data);
+
+      const dummyData: LoginResponse = {
+        id: 1,
+        name: "テストユーザー",
+        token: "123123123123",
+        role: UserRole.MEMBER,
+      };
+      setUser(dummyData);
 
       // ログイン成功したらHOME画面に遷移
       router.push("/home");
