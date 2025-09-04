@@ -2,7 +2,13 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import { useUser } from "@/hooks/userContext";
 import { loginUser } from "@/lib/api";
 import { useRouter } from "next/navigation";
@@ -27,6 +33,13 @@ const pushMock = jest.fn();
   push: pushMock,
 });
 
+beforeAll(() => {
+  jest.spyOn(console, "error").mockImplementation(() => {});
+});
+afterAll(() => {
+  (console.error as jest.Mock).mockRestore();
+});
+
 const setupAndSubmit = async (email: string, password: string) => {
   render(<LoginForm />);
   fireEvent.change(screen.getByPlaceholderText("example@company.co.jp"), {
@@ -35,7 +48,10 @@ const setupAndSubmit = async (email: string, password: string) => {
   fireEvent.change(screen.getByPlaceholderText("••••••••"), {
     target: { value: password },
   });
-  fireEvent.click(screen.getByRole("button", { name: /ログイン/i }));
+
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /ログイン/i }));
+  });
 };
 
 describe("LoginForm tests", () => {
@@ -45,7 +61,10 @@ describe("LoginForm tests", () => {
 
   test("メールアドレスとパスワードが空の場合、バリデーションエラー表示", async () => {
     render(<LoginForm />);
-    fireEvent.click(screen.getByRole("button", { name: /ログイン/i }));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /ログイン/i }));
+    });
 
     expect(
       screen.getByText("メールアドレスを入力してください。")
@@ -63,7 +82,9 @@ describe("LoginForm tests", () => {
     fireEvent.change(screen.getByPlaceholderText("••••••••"), {
       target: { value: "password123" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /ログイン/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /ログイン/i }));
+    });
 
     expect(
       screen.getByText("メールアドレスの形式が正しくありません。")
@@ -130,7 +151,10 @@ describe("LoginForm tests", () => {
 
   test("パスワード忘れモーダル表示", async () => {
     render(<LoginForm />);
-    fireEvent.click(screen.getByText("パスワードを忘れた方はこちら"));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("パスワードを忘れた方はこちら"));
+    });
 
     expect(await screen.findByText("お知らせ")).toBeInTheDocument();
     expect(
