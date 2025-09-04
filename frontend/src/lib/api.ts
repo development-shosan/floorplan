@@ -22,8 +22,20 @@ async function fetchApi(path: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     // エラーレスポンスをパースして、より詳細なエラー情報を提供する
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "API request failed");
+    switch (response.status) {
+      case 400:
+        throw new Error("⚠️ エラー: 不正なリクエスト (400)");
+      case 401:
+        throw new Error("⚠️ エラー: 認証に失敗しました (401)");
+      case 403:
+        throw new Error("⚠️ エラー: アクセスが禁止されています (403)");
+      case 404:
+        throw new Error("⚠️ エラー: リソースが見つかりません (404)");
+      case 500:
+        throw new Error("⚠️ エラー: サーバー内部エラー (500)");
+      default:
+        throw new Error(`⚠️ エラー: 不明なエラー (${response.status})`);
+    }
   }
 
   return response.json();

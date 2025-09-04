@@ -33,7 +33,7 @@ const setup = (role: UserRole, name: string) => {
 };
 
 // Tests
-describe("Header Component", () => {
+describe("Header tests", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });

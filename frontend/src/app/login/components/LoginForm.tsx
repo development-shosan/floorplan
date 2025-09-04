@@ -65,9 +65,20 @@ const LoginForm: React.FC = () => {
 
       // ログイン成功したらHOME画面に遷移
       router.push("/home");
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      setLoginError("メールアドレスまたはパスワードが正しくありません");
+
+      let message: string;
+
+      if (err instanceof Error) {
+        message = err.message.includes("(401)")
+          ? "⚠️ エラー: メールアドレスまたはパスワードが正しくありません (401)"
+          : `${err.message}`;
+      } else {
+        message = "⚠️ エラー: 不明なエラーが発生しました";
+      }
+
+      setLoginError(message);
     } finally {
       setLoading(false);
     }
@@ -165,7 +176,7 @@ const LoginForm: React.FC = () => {
         {loginError && (
           <div className="mt-6 p-3 bg-[#FDF9F2] border-l-4 border-[#E5933C] rounded-sm">
             <p className="flex items-center text-[#B07020] text-[14px]">
-              ⚠️ エラー: {loginError}
+              {loginError}
             </p>
           </div>
         )}
