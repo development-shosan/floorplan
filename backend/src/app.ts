@@ -46,8 +46,8 @@ app.post('/login', async (req, res, next) => {
         } else {
             res.sendStatus(500);
         }
+        return next(err);
     }
-    return next();
 });
 
 app.listen(PORT, () => {

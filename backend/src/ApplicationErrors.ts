@@ -5,6 +5,7 @@
 export class BaseError extends Error {
     constructor(message: string, skipFrames?: Function) {
         super(message);
+        this.name = this.constructor.name;
         delete this.stack;
     }
 }

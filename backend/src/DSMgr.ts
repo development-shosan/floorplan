@@ -23,7 +23,6 @@ export default class DSMgr {
      * @return Object<LoginResult>
      */
     public async login( email: string, password: string ): Promise<LoginResult> {
-        console.log('----hello DSMgr.ts');
         try {
             const user = await this.dbMgr.getUserByEmail(email);
             // The password column allows NULL values.
