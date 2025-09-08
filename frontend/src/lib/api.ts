@@ -19,6 +19,19 @@ function isTokenExpired(token: string | null): boolean {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
+async function parseResponse(response: Response) {
+  if (response.status === 204) return null;
+
+  const text = await response.text();
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
 async function fetchApi(path: string, options: RequestInit = {}) {
   const headers = {
     "Content-Type": "application/json",
@@ -39,13 +52,24 @@ async function fetchApi(path: string, options: RequestInit = {}) {
       throw new Error("Token expired");
     }
 
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+    (headers as Record<string, string>)["Authorization"] = `${token}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
   });
+
+  const newToken = response.headers.get("Authorization");
+  if (newToken) {
+    if (userJson) {
+      const user: LoginResponse = JSON.parse(userJson);
+      user.token = newToken;
+      sessionStorage.setItem("user", JSON.stringify(user));
+
+      (headers as Record<string, string>)["Authorization"] = `${newToken}`;
+    }
+  }
 
   if (!response.ok) {
     // エラーレスポンスをパースして、より詳細なエラー情報を提供する
@@ -65,7 +89,7 @@ async function fetchApi(path: string, options: RequestInit = {}) {
     }
   }
 
-  return response.json();
+  return parseResponse(response);
 }
 
 // 以下に各APIエンドポイントに対応する関数を定義します
