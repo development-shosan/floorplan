@@ -1,7 +1,36 @@
 // APIリクエストを送信するための共通関数をここに定義します。
 // これにより、fetchの呼び出し元で毎回ヘッダーやエラーハンドリングを記述する必要がなくなります。
 
+import { LoginResponse } from "@/hooks/userContext";
+import { jwtDecode } from "jwt-decode";
+
+// トークンの有効期限チェック
+function isTokenExpired(token: string | null): boolean {
+  if (!token) return true;
+
+  try {
+    const { exp } = jwtDecode<{ exp: number }>(token);
+    return !exp || Date.now() >= exp * 1000;
+  } catch (err) {
+    console.error("Invalid token:", err);
+    return true;
+  }
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+async function parseResponse(response: Response) {
+  if (response.status === 204) return null;
+
+  const text = await response.text();
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
 
 async function fetchApi(path: string, options: RequestInit = {}) {
   const headers = {
@@ -9,16 +38,38 @@ async function fetchApi(path: string, options: RequestInit = {}) {
     ...options.headers,
   };
 
-  // 必要に応じて認証トークンをヘッダーに追加
-  // const token = localStorage.getItem('token');
-  // if (token) {
-  //   headers['Authorization'] = `Bearer ${token}`;
-  // }
+  const userJson = sessionStorage.getItem("user");
+  let token: string | null = null;
+
+  if (userJson) {
+    const user: LoginResponse = JSON.parse(userJson);
+    token = user.token;
+
+    // トークンの有効期限が切れた場合、ログイン画面に遷移
+    if (isTokenExpired(token)) {
+      sessionStorage.removeItem("user");
+      window.location.href = "/login";
+      throw new Error("Token expired");
+    }
+
+    (headers as Record<string, string>)["Authorization"] = `${token}`;
+  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
   });
+
+  const newToken = response.headers.get("Authorization");
+  if (newToken) {
+    if (userJson) {
+      const user: LoginResponse = JSON.parse(userJson);
+      user.token = newToken;
+      sessionStorage.setItem("user", JSON.stringify(user));
+
+      (headers as Record<string, string>)["Authorization"] = `${newToken}`;
+    }
+  }
 
   if (!response.ok) {
     // エラーレスポンスをパースして、より詳細なエラー情報を提供する
@@ -38,7 +89,7 @@ async function fetchApi(path: string, options: RequestInit = {}) {
     }
   }
 
-  return response.json();
+  return parseResponse(response);
 }
 
 // 以下に各APIエンドポイントに対応する関数を定義します
@@ -62,7 +113,7 @@ export const createTeamMember = (data: {
 
 // ログイン
 export const loginUser = (email: string, password: string) => {
-  return fetchApi("/api/auth/login", {
+  return fetchApi("/api/v1/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
