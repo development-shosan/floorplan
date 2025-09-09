@@ -1,6 +1,7 @@
 "use client";
 
 import { LoginResponse, useUser } from "@/hooks/userContext";
+import { loginUser } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import React, { useState, FormEvent, useEffect } from "react";
 
@@ -58,18 +59,9 @@ const LoginForm: React.FC = () => {
 
     try {
       // ログインAPI
-      // const data: LoginResponse = await loginUser(email, password);
+      const data: LoginResponse = await loginUser(email, password);
 
-      // setUser(data);
-
-      const dummySystemAdmin: LoginResponse = {
-        id: 999,
-        name: "システム管理者",
-        token: "dummy-system-admin-token-123",
-        role: "SYSTEM_ADMIN",
-      };
-
-      setUser(dummySystemAdmin);
+      setUser(data);
 
       // ログイン成功したらHOME画面に遷移
       router.push("/home");
@@ -146,18 +138,6 @@ const LoginForm: React.FC = () => {
               <p className="text-red-500 text-sm mt-1">{passwordError}</p>
             )}
           </div>
-
-          <div className="mb-6 flex items-center text-sm text-gray-700">
-            <input
-              type="checkbox"
-              id="checkbox"
-              className="h-4 w-4 text-[#667eea] border-gray-300 rounded focus:ring-blue-400"
-            />
-            <label htmlFor="checkbox" className="ml-2 block">
-              ログイン状態を保持する
-            </label>
-          </div>
-
           <button
             type="submit"
             className="w-full bg-[#667eea] hover:bg-[#5a6cdb] text-white font-bold py-2 px-4 rounded-sm transition duration-300"

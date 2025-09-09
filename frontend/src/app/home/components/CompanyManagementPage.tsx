@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import NewUserModal from "./NewUserModal";
+import { UserRole } from "@/constants/roles";
+import { LoginResponse } from "@/hooks/userContext";
 
 interface User {
   id: string;
@@ -46,7 +49,27 @@ const initialUsers: User[] = [
   },
 ];
 
-const CompanyManagementPage: React.FC = () => {
+interface CompanyManagementProps {
+  user: LoginResponse;
+}
+
+const CompanyManagementPage: React.FC<CompanyManagementProps> = ({ user }) => {
+  const currentRole = user.role as UserRole;
+
+  const selectRole =
+    currentRole === UserRole.COMPANY_ADMIN
+      ? "営業担当者"
+      : currentRole === UserRole.SYSTEM_ADMIN
+      ? "管理者"
+      : "";
+
+  const formatDateTime = (date: Date) => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    return `${yyyy}/${mm}/${dd}`;
+  };
+
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,8 +79,8 @@ const CompanyManagementPage: React.FC = () => {
     companyName: "",
     name: "",
     email: "",
-    role: "",
-    registeredAt: "",
+    role: selectRole,
+    registeredAt: formatDateTime(new Date()),
     status: "有効",
   });
 
@@ -105,8 +128,8 @@ const CompanyManagementPage: React.FC = () => {
       companyName: "",
       name: "",
       email: "",
-      role: "",
-      registeredAt: "",
+      role: selectRole,
+      registeredAt: formatDateTime(new Date()),
       status: "有効",
     });
     setEditingUser(null);
@@ -120,9 +143,9 @@ const CompanyManagementPage: React.FC = () => {
       companyName: user.companyName,
       name: user.name,
       email: user.email,
-      role: user.role,
-      registeredAt: user.registeredAt,
-      status: user.status,
+      role: selectRole,
+      registeredAt: formatDateTime(new Date()),
+      status: "有効",
     });
     setIsModalOpen(true);
   };
@@ -136,17 +159,17 @@ const CompanyManagementPage: React.FC = () => {
             placeholder="名前またはメールアドレスで検索"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 w-96"
           />
-          <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+          <button className="bg-[#667eea] hover:bg-[#5a6cdb] text-white px-4 py-2 rounded">
             検索
           </button>
         </div>
         <button
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+          className="bg-[#667eea] hover:bg-[#5a6cdb] text-white px-4 py-2 rounded"
           onClick={() => setIsModalOpen(true)}
         >
-          新規ユーザー登録
+          ➕ 新規ユーザー登録
         </button>
       </div>
 
@@ -154,13 +177,14 @@ const CompanyManagementPage: React.FC = () => {
         登録ユーザー数: {filteredUsers.length}名
       </p>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-45vh)]">
         <table className="min-w-full text-center border-collapse">
           <thead className="bg-gray-100">
             <tr>
               {[
                 "ID",
                 "氏名",
+                "会社名",
                 "メールアドレス",
                 "権限",
                 "登録日",
@@ -187,6 +211,9 @@ const CompanyManagementPage: React.FC = () => {
                   {user.name}
                 </td>
                 <td className="border-b border-gray-300 px-3 py-2">
+                  {user.companyName}
+                </td>
+                <td className="border-b border-gray-300 px-3 py-2">
                   {user.email}
                 </td>
                 <td className="border-b border-gray-300 px-3 py-2">
@@ -197,8 +224,10 @@ const CompanyManagementPage: React.FC = () => {
                 </td>
                 <td className="border-b border-gray-300 px-3 py-2">
                   <span
-                    className={`px-2 py-1 rounded text-white font-medium ${
-                      user.status === "有効" ? "bg-green-500" : "bg-red-500"
+                    className={`px-2 py-1 rounded font-medium ${
+                      user.status === "有効"
+                        ? "text-[#22543d] bg-[#c6f6d5]"
+                        : "text-[#742a2a] bg-[#fed7d7]"
                     }`}
                   >
                     {user.status}
@@ -215,7 +244,7 @@ const CompanyManagementPage: React.FC = () => {
                     編集
                   </button>
                   <button
-                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
+                    className="bg-[#f56565] hover:bg-red-500 text-white px-3 py-1 rounded text-sm"
                     onClick={() => handleDeleteUser(user.id)}
                   >
                     削除
@@ -227,119 +256,15 @@ const CompanyManagementPage: React.FC = () => {
         </table>
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.2)] border border-white/60 backdrop-blur-sm w-[420px] transform transition-all duration-300 animate-[fadeInUp_0.3s_ease-out]">
-            <h2 className="text-xl font-semibold mb-6">
-              {editingUser ? "ユーザー編集" : "新規ユーザー登録"}
-            </h2>
-
-            <div className="flex flex-col gap-4">
-              {/* 氏名 */}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  氏名 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="例: 田中太郎"
-                  value={formUser.name}
-                  onChange={(e) =>
-                    setFormUser({ ...formUser, name: e.target.value })
-                  }
-                  className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-
-              {/* メールアドレス */}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  メールアドレス <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  placeholder="例: tanaka@company.co.jp"
-                  value={formUser.email}
-                  onChange={(e) =>
-                    setFormUser({ ...formUser, email: e.target.value })
-                  }
-                  className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-
-              {/* 初期パスワード */}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  初期パスワード <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  placeholder="8文字以上の英数字"
-                  className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  ※ 初回ログイン時に変更を促します
-                </p>
-              </div>
-
-              {/* 権限 */}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  権限 <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={formUser.role}
-                  onChange={(e) =>
-                    setFormUser({ ...formUser, role: e.target.value })
-                  }
-                  className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                >
-                  <option value="">選択してください</option>
-                  <option value="営業担当者">営業担当者</option>
-                  <option value="管理者">管理者</option>
-                </select>
-              </div>
-
-              {/* 部署 */}
-              <div>
-                <label className="block text-sm font-medium mb-1">部署</label>
-                <input
-                  type="text"
-                  placeholder="例: 営業一課"
-                  className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-
-              {/* 電話番号 */}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  電話番号
-                </label>
-                <input
-                  type="tel"
-                  placeholder="例: 03-1234-5678"
-                  className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded"
-                onClick={editingUser ? handleUpdateUser : handleAddUser}
-              >
-                登録する
-              </button>
-              <button
-                className="bg-gray-200 hover:bg-gray-300 px-5 py-2 rounded"
-                onClick={resetForm}
-              >
-                キャンセル
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <NewUserModal
+        isOpen={isModalOpen}
+        formUser={formUser}
+        setFormUser={setFormUser}
+        userRole={currentRole}
+        editingUser={!!editingUser}
+        onClose={resetForm}
+        onSubmit={editingUser ? handleUpdateUser : handleAddUser}
+      />
     </div>
   );
 };

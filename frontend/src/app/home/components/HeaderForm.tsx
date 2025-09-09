@@ -3,7 +3,7 @@
 
 import React from "react";
 import { UserRole, UserRoleLabel } from "@/constants/roles";
-import { useUser } from "@/hooks/userContext";
+import { LoginResponse } from "@/hooks/userContext";
 
 interface MenuItem {
   titleLabel?: string;
@@ -12,13 +12,20 @@ interface MenuItem {
 }
 
 interface HeaderProps {
+  user: LoginResponse;
+  loading: boolean;
+  logout: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
-  const { user, loading, logout } = useUser();
-
+const Header: React.FC<HeaderProps> = ({
+  user,
+  loading,
+  logout,
+  activeTab,
+  setActiveTab,
+}) => {
   const menuItems: MenuItem[] = [
     {
       titleLabel: "🏠 間取り生成システム",
@@ -58,13 +65,11 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
 
   return (
     <header className="flex items-center justify-between bg-[#3C4858] text-white px-6 py-4 rounded-lg text-lg">
-      {/* 타이틀 */}
       <div className="flex items-center space-x-2">
         <h1 className="text-lg font-bold">{activeTitle}</h1>
       </div>
 
-      {/* 메뉴 버튼 */}
-      <nav className="flex items-center space-x-4">
+      <nav className="absolute left-[35%] flex items-center space-x-4">
         {menuItems
           .filter((item) => item.roles.includes(currentRole))
           .map((item) => (
@@ -73,8 +78,8 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
               onClick={() => setActiveTab(item.label)}
               className={`px-4 py-1 rounded ${
                 activeTab === item.label
-                  ? "bg-[#5a6cdb] text-white"
-                  : "bg-[#4A5568] hover:bg-[#5a6cdb]"
+                  ? "bg-gray-500 text-white"
+                  : "bg-gray-600 hover:bg-gray-500"
               }`}
             >
               {item.label}
@@ -82,14 +87,13 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           ))}
       </nav>
 
-      {/* 유저 정보 */}
       <div className="flex items-center space-x-4">
-        <p className="text-lg font-semibold">
+        <p className="text-lg">
           {`${UserRoleLabel[currentRole]} : ${user.name}`}
         </p>
         <button
           onClick={logout}
-          className="bg-gray-200 text-gray-800 px-2 py-1 text-sm rounded hover:bg-gray-400"
+          className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-2 py-1 text-sm rounded"
         >
           ログアウト
         </button>
