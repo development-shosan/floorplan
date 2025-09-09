@@ -1,4 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt, { VerifyErrors } from "jsonwebtoken";
+import { AppConstant } from '../SpecificCommons';
 
 // これはJWTを検証し、ユーザーの役割に基づいてアクセスを制御するミドルウェアの例です。
 // 実際のプロジェクトでは、jsonwebtokenライブラリなどを使用します。
@@ -31,3 +33,25 @@ export const auth = (...requiredRoles: string[]) => async (req: Request, res: Re
     return res.status(401).json({ message: 'Invalid token' });
   }
 };
+
+
+// Token validation and refresh middleware
+export const refreshTokenIfValid = (req: Request, res: Response, next:NextFunction )=> {
+    if (req.path === '/login') return next();
+    const token = req.headers.authorization;
+    if (!token) {
+        res.status(401).send('Authorization header missing or malformed');
+        return
+    }
+
+    jwt.verify(token, AppConstant.TOKEN.SECRET_KEY, (err: VerifyErrors | null) => {
+        if (err) {
+            res.status(401).send('Invalid or expired token');
+            return
+        }
+
+        const newToken = jwt.sign({}, AppConstant.TOKEN.SECRET_KEY, { expiresIn: AppConstant.TOKEN.EXPIRES });
+        res.setHeader('Authorization', newToken);
+        return next();
+    });
+}
