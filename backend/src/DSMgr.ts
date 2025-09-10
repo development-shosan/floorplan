@@ -5,8 +5,9 @@ import DBMgr from './DBMgr';
 import { LoginResult } from './Types/LoginParam';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import { AppConstant } from './SpecificCommons';
 import { LoginError } from './ApplicationErrors';
+import { env } from '../env';
+import type { StringValue } from 'ms';
 
 export default class DSMgr {
     private dbMgr: DBMgr;
@@ -37,8 +38,8 @@ export default class DSMgr {
 
             const token = jwt.sign(
                 {},
-                AppConstant.JWT.SECRET,
-                { expiresIn: '1h' }
+                env.TOKEN_SECRET,
+                { expiresIn: env.TOKEN_EXPIRES as StringValue}
             );
 
             return {

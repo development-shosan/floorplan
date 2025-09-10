@@ -2,13 +2,12 @@
    src/app.ts
 */
 import express from 'express';
-import dotenv from 'dotenv';
 import DSMgr from './DSMgr';
 import { LoginError } from './ApplicationErrors';
-dotenv.config(); // .env ファイルを読み込む
+import { env } from '../env';
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = env.WEB_SERVER_PORT;
 const dsMgr = new DSMgr();
 
 // JSONボディパーサーを有効にする
