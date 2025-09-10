@@ -1,3 +1,6 @@
+/*
+   Type-safe .env configuration with TypeScript
+ */
 import { load, EnvType } from 'ts-dotenv';
 
 const schema = {
