@@ -21,14 +21,17 @@ model Company {
 }
 
 model User {
-  id         Int       @id @default(autoincrement())
-  email      String    @unique
-  name       String?
-  password   String?   // 招待承諾時に設定するためオプショナルに
-  role       Role      @default(MEMBER)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  histories  History[]
+  id          Int       @id @default(autoincrement())
+  email       String    @unique
+  name        String?
+  password    String?   // 招待承諾時に設定するためオプショナルに
+  department  String?   // 部署
+  phoneNumber String?   // 電話番号
+  status      String?   // ステータス
+  role        Role      @default(MEMBER)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  histories   History[]
 
   // UserとCompanyを紐付ける
   companyId  Int
@@ -46,6 +49,7 @@ model History {
   generatedImageUrl String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+  favorite          Boolean  @default(false) // お気に入り
 
   user User @relation(fields: [userId], references: [id])
 }
