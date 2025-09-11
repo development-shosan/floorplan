@@ -37,7 +37,6 @@ export const auth = (...requiredRoles: string[]) => async (req: Request, res: Re
 
 // Token validation and refresh middleware
 export const refreshTokenIfValid = (req: Request, res: Response, next:NextFunction )=> {
-    if (req.path === '/login') return next();
     const token = req.headers.authorization;
     if (!token) {
         res.status(401).send('Authorization header missing or malformed');
