@@ -1,10 +1,14 @@
+/*
+   src/app.ts
+*/
 import express from 'express';
-import dotenv from 'dotenv';
-
-dotenv.config(); // .env ファイルを読み込む
+import DSMgr from './DSMgr';
+import { LoginError } from './ApplicationErrors';
+import { env } from '../env';
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = env.WEB_SERVER_PORT;
+const dsMgr = new DSMgr();
 
 // JSONボディパーサーを有効にする
 app.use(express.json());
@@ -17,6 +21,32 @@ app.get('/health', (req, res) => {
 // ルートエンドポイント
 app.get('/', (req, res) => {
   res.send('Hello from Backend!');
+});
+
+/**
+ *  Login authentication.
+ *      Request param:
+ *          curl -i -X POST -H "Content-Type: application/json"
+ *               -d "{\"email\":\"user@example.com\",\"password\":\"1234\"}" http://localhost:4000/login
+ *
+ *      Response: Object<LoginResult>
+ */
+app.post('/login', async (req, res, next) => {
+    try {
+        if (req.body.email && req.body.password) {
+            const result = await dsMgr.login(req.body.email, req.body.password);
+            res.json(result);
+        } else {
+            res.sendStatus(400);
+        }
+    } catch (err) {
+        if (err instanceof LoginError) {
+            res.sendStatus(401);
+        } else {
+            res.sendStatus(500);
+        }
+        return next(err);
+    }
 });
 
 app.listen(PORT, () => {
