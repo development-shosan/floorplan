@@ -8,19 +8,17 @@ WORKDIR /app
 COPY package*.json ./
 
 # 4. 依存関係のインストール
-RUN npm install --production=false && npm install ts-node-dev @types/express @types/node
+# package-lock.jsonに基づいた高速で信頼性の高いインストール
+RUN npm ci
 
-# 5. Prismaスキーマのコピー
-COPY prisma ./
+# 5. ソースコードのコピー
+COPY . .
 
 # 6. Prismaクライアントの生成
 RUN npx prisma generate
 
-# 7. ソースコードのコピー
-COPY . .
-
-# 8. Expressサーバーが使用するポートを公開
+# 7. Expressサーバーが使用するポートを公開
 EXPOSE 4000
 
-# 9. 開発サーバーの実行
-CMD ["npm", "run", "dev"]
+# 8. コンテナ起動時のコマンド
+CMD ["npm", "run", "docker:start"]

@@ -44,13 +44,20 @@ export const refreshTokenIfValid = (req: Request, res: Response, next:NextFuncti
         return
     }
 
-    jwt.verify(token, env.TOKEN_SECRET, (err: VerifyErrors | null) => {
+    const jwtSecret = env.JWT_SECRET;
+    if (!jwtSecret) {
+        console.error('JWT_SECRET is not defined in the environment variables.');
+        res.status(500).send('Internal Server Error: JWT secret is not configured.');
+        return;
+    }
+
+    jwt.verify(token, jwtSecret, (err: VerifyErrors | null) => {
         if (err) {
             res.status(403).send('Invalid or expired token');
             return
         }
 
-        const newToken = jwt.sign({}, env.TOKEN_SECRET, { expiresIn: env.TOKEN_EXPIRES as StringValue });
+        const newToken = jwt.sign({}, jwtSecret, { expiresIn: env.TOKEN_EXPIRES as StringValue });
         res.setHeader('Authorization', newToken);
         return next();
     });
