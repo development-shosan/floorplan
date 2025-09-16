@@ -16,6 +16,7 @@ async function main() {
     create: {
       id: 1,
       name: 'Inswave',
+      status: true,
     },
   });
   console.log(`Created company: ${company.name}`);
@@ -30,6 +31,7 @@ async function main() {
       password: hashedPassword,
       companyId: company.id,
       role: Role.SYSTEM_ADMIN,
+      status: true,
     },
   });
   console.log(`Created user with email: ${adminUser.email}`);

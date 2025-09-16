@@ -17,7 +17,7 @@ model Company {
   nameKana       String? // 会社名（カナ）
   representative String? // 代表者名
   email          String? // 連絡先メールアドレス
-  status         String? // ステータス
+  status         Boolean   @default(true) // ステータス
   address        String? // 会社の住所
   createdAt      DateTime  @default(now()) // 登録日
   createdById    Int?
@@ -36,7 +36,7 @@ model User {
   password        String?
   department      String?
   phoneNumber     String?
-  status          String?
+  status          Boolean   @default(true)
   role            Role      @default(MEMBER)
   createdAt       DateTime  @default(now()) // 登録日
   createdById     Int?
