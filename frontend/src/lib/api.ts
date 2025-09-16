@@ -1,6 +1,7 @@
 // APIリクエストを送信するための共通関数をここに定義します。
 // これにより、fetchの呼び出し元で毎回ヘッダーやエラーハンドリングを記述する必要がなくなります。
 
+import { CreateUser } from "@/app/home/components/CompanyManagementPage";
 import { LoginResponse } from "@/hooks/userContext";
 import { jwtDecode } from "jwt-decode";
 
@@ -117,4 +118,57 @@ export const loginUser = (email: string, password: string) => {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
+};
+
+// ユーザー一覧
+export const getUserList = () => {
+  return fetchApi("/api/v1/members", { method: "GET" });
+};
+
+// ユーザー登録
+export const createUser = (formUser: CreateUser) => {
+  const { name, companyId, email, password, role, department, phoneNumber } =
+    formUser;
+
+  return fetchApi("/api/v1/members", {
+    method: "POST",
+    body: JSON.stringify({
+      name,
+      companyId,
+      email,
+      password,
+      role,
+      department,
+      phoneNumber,
+    }),
+  });
+};
+
+// ユーザー編集
+export const updateUser = (formUser: CreateUser, id: number) => {
+  const { name, companyId, email, password, role, department, phoneNumber } =
+    formUser;
+
+  return fetchApi(`/api/v1/members/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      name,
+      companyId,
+      email,
+      password,
+      role,
+      department,
+      phoneNumber,
+    }),
+  });
+};
+
+// ユーザー削除
+export const deleteUser = (id: number) => {
+  return fetchApi(`/api/v1/members/${id}`, { method: "DELETE" });
+};
+
+// 会社一覧
+export const getCompanyList = () => {
+  return fetchApi("/api/v1/companies", { method: "GET" });
 };

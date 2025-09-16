@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import CompanyManagementPage from "./components/CompanyManagementPage";
 import UserManagementPage from "./components/UserManagementPage";
 import MadoriPage from "./components/MadoriPage";
 import HistoryPage from "./components/HistoryPage";
@@ -11,17 +10,14 @@ import { useUser } from "@/hooks/userContext";
 import { UserRole } from "@/constants/roles";
 import Header from "./components/HeaderForm";
 import { useRouter } from "next/navigation";
+import TopPage from "./components/TopPage";
+import CompanyManagementPage from "./components/CompanyManagementPage";
 
 const Home: React.FC = () => {
   const { user, loading, logout } = useUser();
   const router = useRouter();
 
-  const defaultTab =
-    user?.role === UserRole.MEMBER
-      ? "間取り生成"
-      : user?.role === UserRole.COMPANY_ADMIN
-      ? "ユーザー管理"
-      : "会社管理";
+  const defaultTab = user?.role === UserRole.MEMBER ? "間取り生成" : "トップ";
 
   const [activeTab, setActiveTab] = useState<string>(defaultTab || "");
 
@@ -34,16 +30,25 @@ const Home: React.FC = () => {
   if (loading || !user) return <p>ロード中...</p>;
 
   const componentMap: Record<string, React.ReactNode> = {
-    間取り生成: <MadoriPage />,
+    トップ: <TopPage user={user} setActiveTab={setActiveTab} />,
     対応履歴: <HistoryPage />,
+    ユーザー管理:
+      user?.role === UserRole.COMPANY_ADMIN ? (
+        <UserManagementPage />
+      ) : (
+        <CompanyManagementPage
+          user={user}
+          setActiveTab={setActiveTab}
+          topFl={false}
+        />
+      ),
+    間取り生成: <MadoriPage />,
     "⭐ お気に入り": <FavoritePage />,
     マイページ: <MyPage />,
-    ユーザー管理: <UserManagementPage />,
-    会社管理: <CompanyManagementPage user={user} />,
   };
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto rounded-lg bg-gray-50 shadow-sm px-5 py-6 border-2 border-dashed border-gray-300 h-[calc(100vh-10vh)]">
+    <div className="w-full mx-auto bg-gray-200">
       <Header
         user={user}
         loading={loading}
@@ -51,8 +56,7 @@ const Home: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
-
-      <main className="mt-6">
+      <main className="bg-white rounded-lg p-6 m-5">
         {componentMap[activeTab] || <p>コンテンツがありません</p>}
       </main>
     </div>

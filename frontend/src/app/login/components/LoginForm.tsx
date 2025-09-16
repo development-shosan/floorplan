@@ -1,7 +1,6 @@
 "use client";
 
 import { LoginResponse, useUser } from "@/hooks/userContext";
-import { loginUser } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import React, { useState, FormEvent, useEffect } from "react";
 
@@ -59,9 +58,18 @@ const LoginForm: React.FC = () => {
 
     try {
       // ログインAPI
-      const data: LoginResponse = await loginUser(email, password);
+      // const data: LoginResponse = await loginUser(email, password);
 
-      setUser(data);
+      // setUser(data);
+
+      const dummySystemAdmin: LoginResponse = {
+        id: 999,
+        name: "システム管理者",
+        token: "dummy-system-admin-token-123",
+        role: "SYSTEM_ADMIN",
+      };
+
+      setUser(dummySystemAdmin);
 
       // ログイン成功したらHOME画面に遷移
       router.push("/home");
@@ -92,10 +100,10 @@ const LoginForm: React.FC = () => {
           <div className="flex justify-center items-center mb-1">
             <span className="text-3xl">🏠</span>
             <h1 className="text-[28px] font-bold text-[#667eea] ml-2">
-              間取り生成システム
+              {"間取り生成システム"}
             </h1>
           </div>
-          <p className="text-[16px] text-gray-500">営業支援ツール</p>
+          <p className="text-[16px] text-gray-500">{"営業支援ツール"}</p>
         </div>
 
         {/* フォーム */}
@@ -105,7 +113,7 @@ const LoginForm: React.FC = () => {
               htmlFor="email"
               className="block text-gray-600 text-sm font-medium mb-1"
             >
-              メールアドレス
+              {"メールアドレス"}
             </label>
             <input
               id="email"
@@ -124,7 +132,7 @@ const LoginForm: React.FC = () => {
               htmlFor="password"
               className="block text-gray-600 text-sm font-medium mb-1"
             >
-              パスワード
+              {"パスワード"}
             </label>
             <input
               type="password"
@@ -156,7 +164,7 @@ const LoginForm: React.FC = () => {
             }}
             className="text-[#667eea] hover:underline"
           >
-            パスワードを忘れた方はこちら
+            {"パスワードを忘れた方はこちら"}
           </a>
         </div>
 
@@ -182,9 +190,11 @@ const LoginForm: React.FC = () => {
               <span className="text-2xl">&times;</span>
             </button>
             <div className="text-center">
-              <h3 className="text-lg font-bold text-gray-800 mb-2">お知らせ</h3>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">
+                {"お知らせ"}
+              </h3>
               <p className="text-md text-gray-600">
-                管理者にお問い合わせください
+                {"管理者にお問い合わせください"}
               </p>
             </div>
           </div>
