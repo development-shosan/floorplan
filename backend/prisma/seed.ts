@@ -16,6 +16,11 @@ async function main() {
     create: {
       id: 1,
       name: 'Inswave',
+      status: true,
+      postalCode: '100-0001',
+      prefecture: '東京都',
+      city: '千代田区',
+      streetAddress: '丸の内1-1',
     },
   });
   console.log(`Created company: ${company.name}`);
@@ -30,6 +35,7 @@ async function main() {
       password: hashedPassword,
       companyId: company.id,
       role: Role.SYSTEM_ADMIN,
+      status: true,
     },
   });
   console.log(`Created user with email: ${adminUser.email}`);
