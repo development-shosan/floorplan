@@ -18,7 +18,10 @@ model Company {
   representative String? // 代表者名
   email          String? // 連絡先メールアドレス
   status         Boolean   @default(true) // ステータス
-  address        String? // 会社の住所
+  postalCode     String? // 郵便番号
+  prefecture     String? // 都道府県
+  city           String? // 市区町村
+  streetAddress  String? // それ以降の住所
   createdAt      DateTime  @default(now()) // 登録日
   createdById    Int?
   createdBy      User?     @relation("CreatedCompanies", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "company_created_by_fk")
