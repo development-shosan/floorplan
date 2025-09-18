@@ -36,13 +36,9 @@ export default class DSMgr {
                 throw new LoginError('The password is incorrect.');
             }
 
-            if (!env.JWT_SECRET) {
-                throw new Error('JWT_SECRET is not defined in the environment variables.');
-            }
-
             const token = jwt.sign(
                 {},
-                env.JWT_SECRET,
+                env.TOKEN_SECRET,
                 { expiresIn: env.TOKEN_EXPIRES as StringValue}
             );
 
