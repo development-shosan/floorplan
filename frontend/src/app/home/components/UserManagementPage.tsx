@@ -1,58 +1,34 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import NewUserModal from "./NewUserModal";
-import { UserRole } from "@/constants/roles";
-import { LoginResponse } from "@/hooks/userContext";
 import Pagination from "./common/Pagination";
-import { Company } from "@/constants/company";
+import { dummyUsers, User, UserFormData } from "@/constants/user";
+import UserForm from "./UserForm";
+import { useUser } from "@/hooks/userContext";
+import { UserRole } from "@/constants/roles";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  MagnifyingGlassIcon,
+} from "@heroicons/react/16/solid";
 
-// Dummy
-export interface CreateUser {
-  name: string;
-  companyId: number;
-  email: string;
-  password: string;
-  role: "営業担当者" | "管理者";
-  department: string;
-  phoneNumber: string;
-}
-
-export interface User {
-  id: number;
-  email: string;
-  name: string;
-  department: string;
-  phoneNumber: string;
-  status: "有効" | "無効";
-  role: "営業担当者" | "管理者";
-  companyId: number;
-  createdAt: string;
-}
-
-interface UserManagementProps {
-  user: LoginResponse;
-}
-
-const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
-  const currentRole = user.role as UserRole;
-
-  const selectRole =
-    currentRole === UserRole.COMPANY_ADMIN ? "営業担当者" : "管理者";
+const UserManagementPage = () => {
+  const { user } = useUser();
 
   const [users, setUsers] = useState<User[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [search, setSearch] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formUser, setFormUser] = useState<CreateUser>({
+  const [formUser, setFormUser] = useState<UserFormData>({
     name: "",
-    companyId: 0,
+    companyId: user?.role === UserRole.COMPANY_ADMIN ? user.companyId : 0,
+    companyName: "",
     email: "",
-    password: "",
-    role: selectRole,
+    // システム管理者は会社管理者ユーザーのみ、会社管理者は一般ユーザーのみ登録可能
+    role: user?.role === UserRole.SYSTEM_ADMIN ? "COMPANY_ADMIN" : "MEMBER",
     department: "",
     phoneNumber: "",
+    status: true,
   });
   const [loading, setLoading] = useState(true);
 
@@ -68,7 +44,9 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        // API 호출 가능
+        console.log(user);
+        //ユーザー一覧API
+        setUsers(dummyUsers);
       } catch (error) {
         console.error("ユーザー一覧の取得に失敗しました:", error);
       } finally {
@@ -76,33 +54,35 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
       }
     };
 
-    const fetchCompanies = async () => {
-      try {
-        setLoading(true);
-        setCompanies([]);
-      } catch (error) {
-        console.error("会社一覧の取得に失敗しました:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchUsers();
-    fetchCompanies();
   }, []);
 
   const handleAddUser = async () => {
     try {
+      if (user?.role === UserRole.SYSTEM_ADMIN) {
+        //システム管理者ログイン時、同じ会社アカウントがあるかを確認
+        const exists = users.some((u) => u.companyId === formUser.companyId);
+
+        if (exists) {
+          alert("この会社にはすでにユーザーが存在します。");
+          return;
+        }
+      }
+
       const newUser: User = {
         id: users.length + 1,
         name: formUser.name,
         email: formUser.email,
+        role: formUser.role,
+        companyId:
+          user?.role === UserRole.COMPANY_ADMIN
+            ? user.companyId
+            : formUser.companyId,
+        companyName: formUser.companyName,
         department: formUser.department,
         phoneNumber: formUser.phoneNumber,
-        role: formUser.role,
-        companyId: formUser.companyId,
-        status: "有効",
         createdAt: new Date().toISOString().split("T")[0],
+        status: true,
       };
       setUsers([...users, newUser]);
       resetForm();
@@ -116,20 +96,25 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
   const handleUpdateUser = async () => {
     if (!editingUser) return;
     try {
-      const updatedUsers = users.map((u) =>
-        u.id === editingUser.id
+      const updatedUser = users.map((val) =>
+        val.id === editingUser.id
           ? {
-              ...u,
+              ...val,
               name: formUser.name,
+              companyId:
+                user?.role === UserRole.COMPANY_ADMIN
+                  ? user.companyId
+                  : formUser.companyId,
+              companyName: formUser.companyName,
               email: formUser.email,
+              role: formUser.role,
               department: formUser.department,
               phoneNumber: formUser.phoneNumber,
-              role: formUser.role,
-              companyId: formUser.companyId,
+              status: formUser.status,
             }
-          : u
+          : val
       );
-      setUsers(updatedUsers);
+      setUsers(updatedUser);
       resetForm();
       alert("ユーザーを編集しました");
     } catch (error) {
@@ -138,29 +123,19 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
     }
   };
 
-  const handleDeleteUser = async (id: number) => {
-    if (!confirm("本当に削除しますか？")) return;
-    try {
-      setUsers(users.filter((u) => u.id !== id));
-      alert("ユーザーを削除しました");
-    } catch (error) {
-      console.error(error);
-      alert("ユーザーの削除に失敗しました");
-    }
-  };
-
   const resetForm = () => {
     setFormUser({
       name: "",
-      companyId: 0,
+      companyId: user?.role === UserRole.COMPANY_ADMIN ? user.companyId : 0,
+      companyName: "",
       email: "",
-      password: "",
-      role: selectRole,
+      role: user?.role === UserRole.SYSTEM_ADMIN ? "COMPANY_ADMIN" : "MEMBER",
       department: "",
       phoneNumber: "",
+      status: true,
     });
     setEditingUser(null);
-    setIsModalOpen(false);
+    setIsFormOpen(false);
   };
 
   const handleEditClick = (user: User) => {
@@ -168,20 +143,31 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
     setFormUser({
       name: user.name,
       companyId: user.companyId,
+      companyName: user.companyName,
       email: user.email,
-      password: "",
       role: user.role,
       department: user.department,
       phoneNumber: user.phoneNumber,
+      status: user.status,
     });
-    setIsModalOpen(true);
+    setIsFormOpen(true);
   };
 
-  const filteredUsers = users.filter(
-    (user) => user.name.includes(search) || user.email.includes(search)
-  );
+  const filteredUsers = users
+    .filter((u) => {
+      // サーバーから除外されますが念のために
+      if (user?.role === UserRole.COMPANY_ADMIN) {
+        return u.companyId === user.companyId && u.status;
+      }
+      return true;
+    })
+    .filter(
+      (u) =>
+        String(u.id).includes(search) ||
+        u.name.includes(search) ||
+        u.email.includes(search)
+    );
 
-  // 정렬
   const sortedUsers = React.useMemo(() => {
     const sortableUsers = [...filteredUsers];
     if (sortConfig !== null) {
@@ -201,6 +187,12 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
             : bValue - aValue;
         }
 
+        if (typeof aValue === "boolean" && typeof bValue === "boolean") {
+          return sortConfig.direction === "asc"
+            ? Number(aValue) - Number(bValue)
+            : Number(bValue) - Number(aValue);
+        }
+
         return 0;
       });
     }
@@ -218,7 +210,6 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
     }
   };
 
-  // 페이지네이션
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
@@ -232,35 +223,46 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
     <div>
       {loading ? (
         <p>{"ロード中..."}</p>
+      ) : isFormOpen ? (
+        <UserForm
+          formUser={formUser}
+          setFormUser={setFormUser}
+          editingUser={editingUser}
+          onCancel={() => {
+            resetForm();
+            setIsFormOpen(false);
+          }}
+          onSubmit={editingUser ? handleUpdateUser : handleAddUser}
+        />
       ) : (
         <>
           <div className="flex justify-between items-center">
             <h1 className="text-2xl mb-4">{"登録ユーザー管理"}</h1>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="名前またはメールアドレスで検索"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 w-96"
-              />
-            </div>
             <button
               className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded mr-4"
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => setIsFormOpen(true)}
             >
               <span className="text-white font-bold mr-2">{"＋"}</span>
               {"新規ユーザー登録"}
             </button>
           </div>
-          <p className="mb-2 font-medium">{`登録ユーザー数: ${filteredUsers.length}名`}</p>
+          <div className="flex items-center gap-2 w-full mt-5 border border-gray-300 rounded px-3 py-2 focus-within:ring-2 focus-within:ring-blue-400">
+            <MagnifyingGlassIcon className="w-6 h-6 text-gray-500" />
+            <input
+              type="text"
+              placeholder="ユーザーを検索..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 outline-none"
+            />
+          </div>
 
           {filteredUsers.length === 0 ? (
             <p className="text-gray-500 text-center mt-10">
               {"ユーザーが見つかりません"}
             </p>
           ) : (
-            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-45vh)]">
+            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-45vh)] mt-10">
               <table className="min-w-full text-center border-collapse">
                 <thead className="bg-gray-100">
                   <tr>
@@ -268,10 +270,9 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
                       { label: "ID", key: "id" },
                       { label: "氏名", key: "name" },
                       { label: "メールアドレス", key: "email" },
-                      { label: "会社名", key: "companyId" },
+                      { label: "会社名", key: "companyName" },
                       { label: "権限", key: "role" },
                       { label: "登録日", key: "createdAt" },
-                      { label: "ステータス", key: "status" },
                       { label: "操作", key: "" },
                     ].map((th) => (
                       <th
@@ -283,13 +284,17 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
                       >
                         <div className="flex items-center justify-center">
                           <span className="mr-2">{th.label}</span>
-                          {th.key
-                            ? sortConfig?.key === th.key
-                              ? sortConfig.direction === "asc"
-                                ? "↑"
-                                : "↓"
-                              : "↑"
-                            : null}
+                          {th.key ? (
+                            sortConfig?.key === th.key ? (
+                              sortConfig.direction === "asc" ? (
+                                <ChevronUpIcon className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+                              )
+                            ) : (
+                              <ChevronUpIcon className="w-4 h-4 text-gray-500" />
+                            )
+                          ) : null}
                         </div>
                       </th>
                     ))}
@@ -299,7 +304,7 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
                   {paginatedUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50">
                       <td className="border-b border-gray-300 px-3 py-2">
-                        {user.id}
+                        {String(user.id).padStart(3, "0")}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
                         {user.name}
@@ -308,25 +313,13 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
                         {user.email}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
-                        {companies.find((c) => c.id === user.companyId)?.name ||
-                          "-"}
+                        {user.companyName}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
                         {user.role}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
                         {user.createdAt}
-                      </td>
-                      <td className="border-b border-gray-300 px-3 py-2">
-                        <span
-                          className={`px-2 py-1 rounded font-medium ${
-                            user.status === "有効"
-                              ? "text-[#22543d] bg-[#c6f6d5]"
-                              : "text-[#742a2a] bg-[#fed7d7]"
-                          }`}
-                        >
-                          {user.status}
-                        </span>
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2 flex justify-center gap-2">
                         <button
@@ -335,37 +328,27 @@ const UserManagementPage: React.FC<UserManagementProps> = ({ user }) => {
                         >
                           {"編集"}
                         </button>
-                        <button
-                          className="bg-[#f56565] hover:bg-red-500 text-white px-3 py-1 rounded text-sm"
-                          onClick={() => handleDeleteUser(user.id)}
-                        >
-                          {"削除"}
-                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {totalPages > 1 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
-              )}
+              <div className="flex justify-between items-center mt-4 text-sm text-gray-500">
+                <span>
+                  {`Showing ${startIndex + 1} to ${
+                    startIndex + paginatedUsers.length
+                  } of ${sortedUsers.length} results`}
+                </span>
+                {totalPages > 1 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                )}
+              </div>
             </div>
           )}
-
-          <NewUserModal
-            isOpen={isModalOpen}
-            formUser={formUser}
-            setFormUser={setFormUser}
-            companies={companies}
-            userRole={currentRole}
-            editingUser={!!editingUser}
-            onClose={resetForm}
-            onSubmit={editingUser ? handleUpdateUser : handleAddUser}
-          />
         </>
       )}
     </div>

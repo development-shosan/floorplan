@@ -1,23 +1,29 @@
 export interface Company {
-  id: number;
-  name: string;
-  nameKana: string;
-  representative: string;
-  email: string;
-  status: boolean;
-  address: string;
-  createdAt: string;
-  updatedAt: string;
-  members: number;
+  id: number; // 会社ID
+  name: string; // 会社名
+  nameKana: string; // 会社名（カナ）
+  representative: string; // 代表者名
+  email: string; // メール
+  status: boolean; // 状態
+  postalCode: string; // 郵便番号
+  prefecture: string; // 都道府県
+  city: string; // 市区町村
+  streetAddress: string; // それ以降の住所
+  createdAt: string; // 登録日
+  updatedAt: string; // 編集日
+  members: number; // メンバー数
 }
 
-export interface NewCompany {
-  name: string;
-  nameKana: string;
-  representative: string;
-  email: string;
-  address: string;
-  status: boolean;
+export interface CompanyFormData {
+  name: string; // 会社名
+  nameKana: string; // 会社名（カナ）
+  representative: string; // 代表者名
+  email: string; // メール
+  postalCode: string; // 郵便番号
+  prefecture: string; // 都道府県
+  city: string; // 市区町村
+  streetAddress: string; // それ以降の住所
+  status: boolean; // 状態
 }
 
 export const dummyCompanies: Company[] = [
@@ -28,7 +34,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者1",
     email: "abc1@marugameseimen.com",
     status: true,
-    address: "東京都千代田区1-1-1",
+    postalCode: "000-0000",
+    prefecture: "東京都",
+    city: "千代田区",
+    streetAddress: "1-1-1",
     createdAt: "2025/09/14",
     updatedAt: "2025/09/14",
     members: 15,
@@ -40,7 +49,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者2",
     email: "abc2@suntory.com",
     status: false,
-    address: "大阪府大阪市2-2-2",
+    postalCode: "000-0000",
+    prefecture: "大阪府",
+    city: "大阪市",
+    streetAddress: "2-2-2",
     createdAt: "2025/09/15",
     updatedAt: "2025/09/15",
     members: 8,
@@ -52,7 +64,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者3",
     email: "abc3@nintendo.com",
     status: true,
-    address: "京都府京都市3-3-3",
+    postalCode: "000-0000",
+    prefecture: "京都府",
+    city: "京都市",
+    streetAddress: "3-3-3",
     createdAt: "2025/09/16",
     updatedAt: "2025/09/16",
     members: 23,
@@ -64,7 +79,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者4",
     email: "abc4@sony.com",
     status: true,
-    address: "東京都港区4-4-4",
+    postalCode: "000-0000",
+    prefecture: "東京都",
+    city: "港区",
+    streetAddress: "4-4-4",
     createdAt: "2025/09/12",
     updatedAt: "2025/09/12",
     members: 30,
@@ -76,7 +94,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者5",
     email: "abc5@panasonic.com",
     status: false,
-    address: "大阪府門真市5-5-5",
+    postalCode: "000-0000",
+    prefecture: "大阪府",
+    city: "門真市",
+    streetAddress: "5-5-5",
     createdAt: "2025/09/11",
     updatedAt: "2025/09/11",
     members: 18,
@@ -88,7 +109,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者6",
     email: "abc6@honda.com",
     status: true,
-    address: "東京都港区6-6-6",
+    postalCode: "000-0000",
+    prefecture: "東京都",
+    city: "港区",
+    streetAddress: "6-6-6",
     createdAt: "2025/09/10",
     updatedAt: "2025/09/10",
     members: 12,
@@ -100,7 +124,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者7",
     email: "abc7@toyota.com",
     status: true,
-    address: "愛知県豊田市7-7-7",
+    postalCode: "000-0000",
+    prefecture: "愛知県",
+    city: "豊田市",
+    streetAddress: "7-7-7",
     createdAt: "2025/09/09",
     updatedAt: "2025/09/09",
     members: 25,
@@ -112,7 +139,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者8",
     email: "abc8@softbank.com",
     status: false,
-    address: "東京都港区8-8-8",
+    postalCode: "000-0000",
+    prefecture: "東京都",
+    city: "港区",
+    streetAddress: "8-8-8",
     createdAt: "2025/09/08",
     updatedAt: "2025/09/08",
     members: 10,
@@ -124,7 +154,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者9",
     email: "abc9@rakuten.com",
     status: true,
-    address: "東京都世田谷区9-9-9",
+    postalCode: "000-0000",
+    prefecture: "東京都",
+    city: "世田谷区",
+    streetAddress: "9-9-9",
     createdAt: "2025/09/07",
     updatedAt: "2025/09/07",
     members: 20,
@@ -136,7 +169,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者10",
     email: "abc10@fanuc.com",
     status: true,
-    address: "山梨県南都留郡10-10-10",
+    postalCode: "000-0000",
+    prefecture: "山梨県",
+    city: "南都留郡",
+    streetAddress: "10-10-10",
     createdAt: "2025/09/06",
     updatedAt: "2025/09/06",
     members: 14,
@@ -148,7 +184,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者11",
     email: "abc11@hitachi.com",
     status: true,
-    address: "東京都千代田区11-11-11",
+    postalCode: "000-0000",
+    prefecture: "東京都",
+    city: "千代田区",
+    streetAddress: "11-11-11",
     createdAt: "2025/09/05",
     updatedAt: "2025/09/05",
     members: 22,
@@ -160,7 +199,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者12",
     email: "abc12@mitsubishielectric.com",
     status: false,
-    address: "東京都千代田区12-12-12",
+    postalCode: "000-0000",
+    prefecture: "東京都",
+    city: "千代田区",
+    streetAddress: "12-12-12",
     createdAt: "2025/09/04",
     updatedAt: "2025/09/04",
     members: 16,
@@ -172,7 +214,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者13",
     email: "abc13@fujitsu.com",
     status: true,
-    address: "神奈川県川崎市13-13-13",
+    postalCode: "000-0000",
+    prefecture: "神奈川県",
+    city: "川崎市",
+    streetAddress: "13-13-13",
     createdAt: "2025/09/03",
     updatedAt: "2025/09/03",
     members: 28,
@@ -184,7 +229,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者14",
     email: "abc14@recruit.com",
     status: true,
-    address: "東京都千代田区14-14-14",
+    postalCode: "000-0000",
+    prefecture: "東京都",
+    city: "千代田区",
+    streetAddress: "14-14-14",
     createdAt: "2025/09/02",
     updatedAt: "2025/09/02",
     members: 9,
@@ -196,7 +244,10 @@ export const dummyCompanies: Company[] = [
     representative: "代表者15",
     email: "abc15@seven-eleven.com",
     status: false,
-    address: "東京都豊島区15-15-15",
+    postalCode: "000-0000",
+    prefecture: "東京都",
+    city: "豊島区",
+    streetAddress: "15-15-15",
     createdAt: "2025/09/01",
     updatedAt: "2025/09/01",
     members: 11,

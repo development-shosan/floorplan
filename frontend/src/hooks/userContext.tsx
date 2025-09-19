@@ -13,6 +13,7 @@ export interface LoginResponse {
   name: string;
   token: string;
   role: "MEMBER" | "COMPANY_ADMIN" | "SYSTEM_ADMIN";
+  companyId?: number;
 }
 
 interface UserContextProps {

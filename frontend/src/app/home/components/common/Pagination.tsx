@@ -23,11 +23,6 @@ const Pagination: React.FC<PaginationProps> = ({
 
   return (
     <div className="flex justify-between items-center mt-6 px-4">
-      {/* ページの情報 */}
-      <span className="text-gray-700 font-medium">
-        {currentPage} / {totalPages} ページ
-      </span>
-
       <div className="flex space-x-1">
         {/* 最初のページ */}
         <button

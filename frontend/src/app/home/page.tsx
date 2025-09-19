@@ -39,7 +39,7 @@ const Home: React.FC = () => {
   const componentMap: Record<string, React.ReactNode> = {
     対応履歴: <HistoryPage />,
     会社管理: <CompanyManagementPage />,
-    ユーザー管理: <UserManagementPage user={user} />,
+    ユーザー管理: <UserManagementPage />,
   };
 
   return (

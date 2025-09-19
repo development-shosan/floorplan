@@ -1,23 +1,26 @@
 "use client";
 
-import { Company, NewCompany } from "@/constants/company";
-import React from "react";
+import { Company, CompanyFormData } from "@/constants/company";
+import { Prefecture } from "@/constants/prefectures";
+import React, { useState } from "react";
 
-interface CompanyFormPageProps {
-  formCompany: NewCompany;
-  setFormCompany: React.Dispatch<React.SetStateAction<NewCompany>>;
+interface CompanyFormProps {
+  formCompany: CompanyFormData;
+  setFormCompany: React.Dispatch<React.SetStateAction<CompanyFormData>>;
   editingCompany: Company | null;
   onCancel: () => void;
   onSubmit: () => void;
 }
 
-const CompanyFormPage: React.FC<CompanyFormPageProps> = ({
+const CompanyForm: React.FC<CompanyFormProps> = ({
   formCompany,
   setFormCompany,
   editingCompany,
   onCancel,
   onSubmit,
 }) => {
+  const [isChecked, setIsChecked] = useState(false);
+
   return (
     <div className="max-w-4xl mx-auto">
       <button onClick={onCancel} className="text-gray-500 mb-4 hover:underline">
@@ -38,7 +41,7 @@ const CompanyFormPage: React.FC<CompanyFormPageProps> = ({
 
       <div className="bg-white rounded-lg shadow p-6 space-y-6">
         <section className="space-y-4">
-          <h2 className="text-lg font-medium border-b border-gray-300 pb-2">
+          <h2 className="text-xl font-medium border-b border-gray-300 pb-2">
             基本情報
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -67,7 +70,6 @@ const CompanyFormPage: React.FC<CompanyFormPageProps> = ({
               />
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">
@@ -91,67 +93,62 @@ const CompanyFormPage: React.FC<CompanyFormPageProps> = ({
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-lg font-medium border-b border-gray-300 pb-2">
+          <h2 className="text-xl font-medium border-b border-gray-300 pb-2">
             所在地情報
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* <div>
-      <label className="block text-sm font-medium mb-1">郵便番号</label>
-      <input
-        type="text"
-        placeholder="100-0001"
-        value={formCompany.postalCode || ""}
-        onChange={(e) =>
-          setFormCompany({ ...formCompany, postalCode: e.target.value })
-        }
-        className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
-    </div>
-
-
-    <div>
-      <label className="block text-sm font-medium mb-1">都道府県</label>
-      <select
-        value={formCompany.prefecture || ""}
-        onChange={(e) =>
-          setFormCompany({ ...formCompany, prefecture: e.target.value })
-        }
-        className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-      >
-        <option value="">選択してください</option>
-        <option value="東京都">東京都</option>
-        <option value="神奈川県">神奈川県</option>
-        <option value="千葉県">千葉県</option>
-        <option value="埼玉県">埼玉県</option>
-      </select>
-    </div>
-
-
-    <div>
-      <label className="block text-sm font-medium mb-1">市区町村</label>
-      <input
-        type="text"
-        placeholder="千代田区丸の内"
-        value={formCompany.city || ""}
-        onChange={(e) =>
-          setFormCompany({ ...formCompany, city: e.target.value })
-        }
-        className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
-    </div> */}
+            <div>
+              <label className="block text-sm font-medium mb-1">郵便番号</label>
+              <input
+                type="text"
+                value={formCompany.postalCode || ""}
+                onChange={(e) =>
+                  setFormCompany({ ...formCompany, postalCode: e.target.value })
+                }
+                className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">都道府県</label>
+              <select
+                value={formCompany.prefecture || ""}
+                onChange={(e) =>
+                  setFormCompany({ ...formCompany, prefecture: e.target.value })
+                }
+                className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                <option value="">選択してください</option>
+                {Object.values(Prefecture).map((pref) => (
+                  <option key={pref} value={pref}>
+                    {pref}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">市区町村</label>
+              <input
+                type="text"
+                value={formCompany.city || ""}
+                onChange={(e) =>
+                  setFormCompany({ ...formCompany, city: e.target.value })
+                }
+                className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
           </div>
-
-          {/* 番地・建物名 */}
           <div>
             <label className="block text-sm font-medium mb-1">
               番地・建物名
             </label>
             <input
               type="text"
-              placeholder="1-1-1 ABCビル 5階"
-              value={formCompany.address || ""}
+              value={formCompany.streetAddress || ""}
               onChange={(e) =>
-                setFormCompany({ ...formCompany, address: e.target.value })
+                setFormCompany({
+                  ...formCompany,
+                  streetAddress: e.target.value,
+                })
               }
               className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
@@ -159,7 +156,7 @@ const CompanyFormPage: React.FC<CompanyFormPageProps> = ({
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-lg font-medium border-b border-gray-300 pb-2">
+          <h2 className="text-xl font-medium border-b border-gray-300 pb-2">
             担当者情報
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -193,6 +190,44 @@ const CompanyFormPage: React.FC<CompanyFormPageProps> = ({
           </div>
         </section>
 
+        {editingCompany && editingCompany.status === false && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-medium border-b border-gray-300 pb-2">
+              危険な操作
+            </h2>
+            <div className="border p-4 rounded-lg bg-gray-50 border-gray-200">
+              <h3>⚠️ アカウント削除</h3>
+              <p className="text-gray-700 px-4 m-2 text-sm">
+                この会社のアカウントを完全に削除します。この操作は取り消すことができません。
+              </p>
+              <label className="flex items-center px-4 m-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mr-2"
+                  checked={isChecked}
+                  onChange={(e) => setIsChecked(e.target.checked)}
+                />
+                削除することを理解し、同意します
+              </label>
+              <button
+                className={`px-4 py-2 ml-6 rounded-md text-white text-sm ${
+                  isChecked ? "bg-gray-600 hover:bg-gray-800" : "bg-gray-400"
+                }`}
+                onClick={() => {
+                  if (!isChecked) {
+                    alert("チェックボックスを確認してください。");
+                    return;
+                  }
+                  alert("アカウントを削除します！");
+                }}
+                disabled={!isChecked}
+              >
+                🗑️ アカウントを削除
+              </button>
+            </div>
+          </section>
+        )}
+
         <div className="flex justify-end gap-3 mt-4">
           <button
             onClick={onCancel}
@@ -212,4 +247,4 @@ const CompanyFormPage: React.FC<CompanyFormPageProps> = ({
   );
 };
 
-export default CompanyFormPage;
+export default CompanyForm;

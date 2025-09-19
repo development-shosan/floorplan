@@ -1,7 +1,7 @@
 // APIリクエストを送信するための共通関数をここに定義します。
 // これにより、fetchの呼び出し元で毎回ヘッダーやエラーハンドリングを記述する必要がなくなります。
 
-import { CreateUser } from "@/app/home/components/CompanyManagementPage";
+import { UserFormData } from "@/constants/user";
 import { LoginResponse } from "@/hooks/userContext";
 import { jwtDecode } from "jwt-decode";
 
@@ -95,23 +95,6 @@ async function fetchApi(path: string, options: RequestInit = {}) {
 
 // 以下に各APIエンドポイントに対応する関数を定義します
 
-// 例: チームメンバーを取得するAPI
-export const getTeamMembers = () => {
-  return fetchApi("/api/admin/team/members", { method: "GET" });
-};
-
-// 例: 新しいメンバーを作成するAPI
-export const createTeamMember = (data: {
-  name: string;
-  email: string;
-  password: string;
-}) => {
-  return fetchApi("/api/admin/team/members", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-};
-
 // ログイン
 export const loginUser = (email: string, password: string) => {
   return fetchApi("/api/v1/login", {
@@ -121,12 +104,22 @@ export const loginUser = (email: string, password: string) => {
 };
 
 // ユーザー一覧
-export const getUserList = () => {
-  return fetchApi("/api/v1/members", { method: "GET" });
+export const getUserList = (user: LoginResponse) => {
+  const role = user.role;
+
+  let url = "";
+
+  if (role === "COMPANY_ADMIN") {
+    url = `/api/v1/members/${role}/company/${user.companyId}`;
+  } else {
+    url = `/api/v1/members/${role}`;
+  }
+
+  return fetchApi(url, { method: "GET" });
 };
 
 // ユーザー登録
-export const createUser = (formUser: CreateUser) => {
+export const createUser = (formUser: UserFormData) => {
   const { name, companyId, email, password, role, department, phoneNumber } =
     formUser;
 
@@ -145,7 +138,7 @@ export const createUser = (formUser: CreateUser) => {
 };
 
 // ユーザー編集
-export const updateUser = (formUser: CreateUser, id: number) => {
+export const updateUser = (formUser: UserFormData, id: number) => {
   const { name, companyId, email, password, role, department, phoneNumber } =
     formUser;
 

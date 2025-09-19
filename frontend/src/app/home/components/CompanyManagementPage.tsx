@@ -2,20 +2,28 @@
 
 import React, { useEffect, useState } from "react";
 import Pagination from "./common/Pagination";
-import { Company, dummyCompanies, NewCompany } from "@/constants/company";
+import { Company, dummyCompanies, CompanyFormData } from "@/constants/company";
 import CompanyForm from "./CompanyForm";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  MagnifyingGlassIcon,
+} from "@heroicons/react/16/solid";
 
 const CompanyManagementPage = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [search, setSearch] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
-  const [formCompany, setFormCompany] = useState<NewCompany>({
+  const [formCompany, setFormCompany] = useState<CompanyFormData>({
     name: "",
     nameKana: "",
     representative: "",
     email: "",
-    address: "",
+    postalCode: "",
+    prefecture: "",
+    city: "",
+    streetAddress: "",
     status: true,
   });
   const [loading, setLoading] = useState(true);
@@ -45,6 +53,16 @@ const CompanyManagementPage = () => {
 
   const handleAddCompany = async () => {
     try {
+      // 同じ会社が存在するか確認
+      const exists = companies.some(
+        (c) => c.name.trim() === formCompany.name.trim()
+      );
+
+      if (exists) {
+        alert("同じ会社名が既に登録されています。");
+        return;
+      }
+
       const newCompany: Company = {
         id: companies.length + 1,
         name: formCompany.name,
@@ -52,7 +70,10 @@ const CompanyManagementPage = () => {
         representative: formCompany.representative,
         email: formCompany.email,
         status: true,
-        address: formCompany.address,
+        postalCode: formCompany.postalCode,
+        prefecture: formCompany.prefecture,
+        city: formCompany.city,
+        streetAddress: formCompany.streetAddress,
         createdAt: new Date().toISOString().split("T")[0],
         updatedAt: new Date().toISOString().split("T")[0],
         members: 0,
@@ -69,6 +90,18 @@ const CompanyManagementPage = () => {
   const handleUpdateCompany = async () => {
     if (!editingCompany) return;
     try {
+      // 同じ会社が存在するか確認
+      const exists = companies.some(
+        (c) =>
+          c.id !== editingCompany.id &&
+          c.name.trim() === formCompany.name.trim()
+      );
+
+      if (exists) {
+        alert("同じ会社名が既に登録されています。");
+        return;
+      }
+
       const updatedCompany = companies.map((val) =>
         val.id === editingCompany.id
           ? {
@@ -77,7 +110,10 @@ const CompanyManagementPage = () => {
               nameKana: formCompany.nameKana,
               representative: formCompany.representative,
               email: formCompany.email,
-              address: formCompany.address,
+              postalCode: formCompany.postalCode,
+              prefecture: formCompany.prefecture,
+              city: formCompany.city,
+              streetAddress: formCompany.streetAddress,
               status: formCompany.status,
             }
           : val
@@ -97,7 +133,10 @@ const CompanyManagementPage = () => {
       nameKana: "",
       representative: "",
       email: "",
-      address: "",
+      postalCode: "",
+      prefecture: "",
+      city: "",
+      streetAddress: "",
       status: true,
     });
     setEditingCompany(null);
@@ -111,7 +150,10 @@ const CompanyManagementPage = () => {
       nameKana: company.nameKana,
       representative: company.representative,
       email: company.email,
-      address: company.address,
+      postalCode: company.postalCode,
+      prefecture: company.prefecture,
+      city: company.city,
+      streetAddress: company.streetAddress,
       status: company.status,
     });
     setIsFormOpen(true);
@@ -205,7 +247,7 @@ const CompanyManagementPage = () => {
             </button>
           </div>
           <div className="flex items-center gap-2 w-full mt-5 border border-gray-300 rounded px-3 py-2 focus-within:ring-2 focus-within:ring-blue-400">
-            <span className="text-gray-400">🔍</span>
+            <MagnifyingGlassIcon className="w-6 h-6 text-gray-500" />
             <input
               type="text"
               placeholder="会社を検索..."
@@ -230,7 +272,6 @@ const CompanyManagementPage = () => {
                       { label: "管理者名", key: "representative" },
                       { label: "ユーザー数", key: "members" },
                       { label: "登録日", key: "createdAt" },
-                      { label: "ステータス", key: "status" },
                       { label: "操作", key: "" },
                     ].map((th) => (
                       <th
@@ -242,13 +283,17 @@ const CompanyManagementPage = () => {
                       >
                         <div className="flex items-center justify-center">
                           <span className="mr-2">{th.label}</span>
-                          {th.key
-                            ? sortConfig?.key === th.key
-                              ? sortConfig.direction === "asc"
-                                ? "↑"
-                                : "↓"
-                              : "↑"
-                            : null}
+                          {th.key ? (
+                            sortConfig?.key === th.key ? (
+                              sortConfig.direction === "asc" ? (
+                                <ChevronUpIcon className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+                              )
+                            ) : (
+                              <ChevronUpIcon className="w-4 h-4 text-gray-500" />
+                            )
+                          ) : null}
                         </div>
                       </th>
                     ))}
@@ -272,17 +317,6 @@ const CompanyManagementPage = () => {
                       <td className="border-b border-gray-300 px-3 py-2">
                         {company.createdAt}
                       </td>
-                      <td className="border-b border-gray-300 px-3 py-2">
-                        <span
-                          className={`px-2 py-1 rounded font-medium ${
-                            company.status
-                              ? "text-[#22543d] bg-[#c6f6d5]"
-                              : "text-[#742a2a] bg-[#fed7d7]"
-                          }`}
-                        >
-                          {company.status ? "有効" : "無効"}
-                        </span>
-                      </td>
                       <td className="border-b border-gray-300 px-3 py-2 flex justify-center gap-2">
                         <button
                           className="bg-gray-300 hover:bg-gray-400 px-3 py-1 rounded text-sm"
@@ -295,13 +329,20 @@ const CompanyManagementPage = () => {
                   ))}
                 </tbody>
               </table>
-              {totalPages > 1 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
-              )}
+              <div className="flex justify-between items-center mt-4 text-sm text-gray-500">
+                <span>
+                  {`Showing ${startIndex + 1} to ${
+                    startIndex + paginatedCompanies.length
+                  } of ${sortedCompanies.length} results`}
+                </span>
+                {totalPages > 1 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                )}
+              </div>
             </div>
           )}
         </>

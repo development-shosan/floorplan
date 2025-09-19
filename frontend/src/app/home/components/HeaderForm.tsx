@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { UserRole, UserRoleLabel } from "@/constants/roles";
 import { LoginResponse } from "@/hooks/userContext";
+import { HomeIcon } from "@heroicons/react/16/solid";
 
 interface MenuItem {
   label: string;
@@ -72,7 +73,10 @@ const Header: React.FC<HeaderProps> = ({
       } text-white px-6 py-3 relative`}
     >
       <div className="flex items-center space-x-4">
-        <h1 className="text-xl font-semibold">{"🏠 Plan Butler"}</h1>
+        <h1 className="flex items-center text-xl font-semibold space-x-2">
+          <HomeIcon className="w-6 h-6 transform scale-x-120" />
+          <span>Plan Butler</span>
+        </h1>
         <span className="text-sm text-gray-300">
           {`${UserRoleLabel[currentRole]}用`}
         </span>
