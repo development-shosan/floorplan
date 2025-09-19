@@ -34,7 +34,7 @@ const UserForm: React.FC<UserFormProps> = ({
     setCompanies(dummyCompanies);
   }, []);
 
-  // SYSTEM_ADMIN이 MEMBER를 편집할 때 읽기 전용
+  // システム管理者が一般ユーザーを編集する時
   const isReadOnly =
     user?.role === UserRole.SYSTEM_ADMIN &&
     editingUser?.role === UserRole.MEMBER;

@@ -66,7 +66,7 @@ const LoginForm: React.FC = () => {
         id: 999,
         name: "システム管理者",
         token: "dummy-system-admin-token-123",
-        role: "SYSTEM_ADMIN",
+        role: "COMPANY_ADMIN",
         companyId: 2,
       };
 
