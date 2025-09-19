@@ -83,6 +83,8 @@ async function fetchApi(path: string, options: RequestInit = {}) {
         throw new Error("⚠️ エラー: アクセスが禁止されています (403)");
       case 404:
         throw new Error("⚠️ エラー: リソースが見つかりません (404)");
+      case 406:
+        throw new Error("⚠️ エラー: 管理者にお問い合わせください (406)");
       case 500:
         throw new Error("⚠️ エラー: サーバー内部エラー (500)");
       default:

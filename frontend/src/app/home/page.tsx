@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import HistoryPage from "./components/HistoryPage";
 import { useUser } from "@/hooks/userContext";
-import { UserRole } from "@/constants/roles";
 import Header from "./components/HeaderForm";
 import { useRouter } from "next/navigation";
 import CompanyManagementPage from "./components/CompanyManagementPage";
@@ -13,23 +12,12 @@ const Home: React.FC = () => {
   const { user, loading, logout } = useUser();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>("対応履歴");
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push("/login");
-      } else {
-        switch (user.role) {
-          case UserRole.SYSTEM_ADMIN:
-            setActiveTab("会社管理");
-            break;
-          case UserRole.COMPANY_ADMIN:
-            setActiveTab("ユーザー管理");
-            break;
-          default:
-            setActiveTab("間取り生成");
-        }
       }
     }
   }, [user, loading, router]);

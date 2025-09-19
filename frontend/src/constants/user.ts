@@ -12,6 +12,7 @@ export interface User {
 }
 
 export interface UserFormData {
+  id?: number; //ユーザーID
   name: string; // 氏名
   companyId?: number; // 会社ID
   companyName: string; //会社名

@@ -5,6 +5,7 @@ import { UserRole } from "@/constants/roles";
 import { User, UserFormData } from "@/constants/user";
 import { useUser } from "@/hooks/userContext";
 import React, { useEffect, useState } from "react";
+import PasswordModal from "./PasswordModal";
 
 interface UserFormProps {
   formUser: UserFormData;
@@ -25,14 +26,73 @@ const UserForm: React.FC<UserFormProps> = ({
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [password, setPassword] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    // TODO: fetch("/api/companies").then(...)
     setCompanies(dummyCompanies);
   }, []);
+
+  // SYSTEM_ADMIN이 MEMBER를 편집할 때 읽기 전용
+  const isReadOnly =
+    user?.role === UserRole.SYSTEM_ADMIN &&
+    editingUser?.role === UserRole.MEMBER;
+
+  const validate = () => {
+    const newErrors: { [key: string]: string } = {};
+
+    if (!formUser.name.trim()) {
+      newErrors.name = "氏名を入力してください。";
+    }
+
+    if (user?.role === UserRole.SYSTEM_ADMIN && !editingUser) {
+      if (!formUser.companyId) {
+        newErrors.companyId = "会社を選択してください。";
+      }
+    }
+
+    if (!formUser.department.trim()) {
+      newErrors.department = "部署名を入力してください。";
+    }
+
+    if (!formUser.phoneNumber.trim()) {
+      newErrors.phoneNumber = "電話番号を入力してください。";
+    } else if (!/^\d{2,4}-\d{2,4}-\d{3,4}$/.test(formUser.phoneNumber)) {
+      newErrors.phoneNumber =
+        "正しい形式で入力してください。(例: 03-1234-5678)";
+    }
+
+    if (!formUser.email.trim()) {
+      newErrors.email = "メールアドレスを入力してください。";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formUser.email)) {
+      newErrors.email = "正しいメールアドレスを入力してください。";
+    }
+
+    if (!editingUser) {
+      if (!password) {
+        newErrors.password = "パスワードを入力してください。";
+      } else if (password.length < 8) {
+        newErrors.password = "パスワードは8文字以上で入力してください。";
+      } else if (!/(?=.*[A-Za-z])(?=.*\d)/.test(password)) {
+        newErrors.password = "パスワードは英字と数字を含めてください。";
+      }
+
+      if (!confirmPassword) {
+        newErrors.confirmPassword = "確認用パスワードを入力してください。";
+      } else if (password !== confirmPassword) {
+        newErrors.confirmPassword = "パスワードが一致しません。";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (!validate()) return;
+    onSubmit();
+  };
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -66,44 +126,101 @@ const UserForm: React.FC<UserFormProps> = ({
                 type="text"
                 value={formUser.name}
                 onChange={(e) =>
+                  !isReadOnly &&
                   setFormUser({ ...formUser, name: e.target.value })
                 }
-                className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">会社名</label>
-              <select
-                value={formUser.companyId}
-                onChange={(e) => {
-                  const selectedId = Number(e.target.value);
-                  const selectedCompany = companies.find(
-                    (c) => c.id === selectedId
-                  );
-
-                  setFormUser({
-                    ...formUser,
-                    companyId: selectedId,
-                    companyName: selectedCompany ? selectedCompany.name : "",
-                  });
-                }}
+                readOnly={isReadOnly}
                 className={`w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                  user?.role === UserRole.COMPANY_ADMIN ? "bg-gray-100" : ""
+                  isReadOnly ? "bg-gray-100" : ""
                 }`}
-                disabled={user?.role === UserRole.COMPANY_ADMIN}
-              >
-                <option value="">会社を選択</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {`${c.id} : ${c.name}`}
-                  </option>
-                ))}
-              </select>
+              />
+              {errors.name && (
+                <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+              )}
             </div>
           </div>
+
+          {user?.role === UserRole.SYSTEM_ADMIN && !editingUser && (
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">会社名</label>
+                <select
+                  value={formUser.companyId}
+                  onChange={(e) => {
+                    if (isReadOnly) return;
+                    const selectedId = Number(e.target.value);
+                    const selectedCompany = companies.find(
+                      (c) => c.id === selectedId
+                    );
+
+                    setFormUser({
+                      ...formUser,
+                      companyId: selectedId,
+                      companyName: selectedCompany ? selectedCompany.name : "",
+                    });
+                  }}
+                  disabled={isReadOnly}
+                  className={`w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                    isReadOnly ? "bg-gray-100" : ""
+                  }`}
+                >
+                  <option value="">会社を選択</option>
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {`${c.id} : ${c.name}`}
+                    </option>
+                  ))}
+                </select>
+                {errors.companyId && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.companyId}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {editingUser && (
+            <>
+              {user?.role === UserRole.SYSTEM_ADMIN && (
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      権限
+                    </label>
+                    <select
+                      value={formUser.role}
+                      onChange={(e) =>
+                        !isReadOnly &&
+                        setFormUser({
+                          ...formUser,
+                          role: e.target.value as
+                            | UserRole.MEMBER
+                            | UserRole.COMPANY_ADMIN,
+                        })
+                      }
+                      disabled={isReadOnly}
+                      className={`w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                        isReadOnly ? "bg-gray-100" : ""
+                      }`}
+                    >
+                      {Object.values(UserRole)
+                        .filter(
+                          (role) =>
+                            role === UserRole.MEMBER ||
+                            role === UserRole.COMPANY_ADMIN
+                        )
+                        .map((role) => (
+                          <option key={role} value={role}>
+                            {role}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           <div className="grid grid-cols-1 gap-4">
             <div>
@@ -112,33 +229,69 @@ const UserForm: React.FC<UserFormProps> = ({
                 type="text"
                 value={formUser.department}
                 onChange={(e) =>
+                  !isReadOnly &&
                   setFormUser({ ...formUser, department: e.target.value })
                 }
-                className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                readOnly={isReadOnly}
+                className={`w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                  isReadOnly ? "bg-gray-100" : ""
+                }`}
               />
+              {errors.department && (
+                <p className="text-red-500 text-sm mt-1">{errors.department}</p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">
-                ステータス
-              </label>
-              <select
-                value={formUser.status ? "true" : "false"}
+              <label className="block text-sm font-medium mb-1">電話番号</label>
+              <input
+                type="text"
+                value={formUser.phoneNumber}
                 onChange={(e) =>
-                  setFormUser({
-                    ...formUser,
-                    status: e.target.value === "true",
-                  })
+                  !isReadOnly &&
+                  setFormUser({ ...formUser, phoneNumber: e.target.value })
                 }
-                className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option value="true">有効</option>
-                <option value="false">無効</option>
-              </select>
+                readOnly={isReadOnly}
+                className={`w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                  isReadOnly ? "bg-gray-100" : ""
+                }`}
+              />
+              {errors.phoneNumber && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.phoneNumber}
+                </p>
+              )}
             </div>
           </div>
+
+          {editingUser && (
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  ステータス
+                </label>
+                <select
+                  value={formUser.status ? "true" : "false"}
+                  onChange={(e) =>
+                    !isReadOnly &&
+                    setFormUser({
+                      ...formUser,
+                      status: e.target.value === "true",
+                    })
+                  }
+                  disabled={isReadOnly}
+                  className={`w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                    isReadOnly ? "bg-gray-100" : ""
+                  }`}
+                >
+                  <option value="true">有効</option>
+                  <option value="false">無効</option>
+                </select>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* アカウント設定 */}
@@ -156,78 +309,42 @@ const UserForm: React.FC<UserFormProps> = ({
                 type="text"
                 value={formUser.email}
                 onChange={(e) =>
-                  setFormUser({
-                    ...formUser,
-                    email: e.target.value,
-                  })
+                  !isReadOnly &&
+                  setFormUser({ ...formUser, email: e.target.value })
                 }
-                disabled={!!editingUser}
+                disabled={!!editingUser || isReadOnly}
                 className={`w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                  editingUser ? "bg-gray-100" : ""
+                  editingUser || isReadOnly ? "bg-gray-100" : ""
                 }`}
               />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+              )}
             </div>
           </div>
 
           {editingUser ? (
-            <section className="mt-6">
-              <h2 className="text-xl font-medium mb-2">パスワード変更</h2>
-              <div className="bg-white shadow rounded-lg p-6 space-y-4 border border-gray-200">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      現在のパスワード
-                    </label>
-                    <input
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      新しいパスワード
-                    </label>
-                    <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      新しいパスワード（確認）
-                    </label>
-                    <input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        console.log("パスワード変更リクエスト:", {
-                          currentPassword,
-                          newPassword,
-                          confirmPassword,
-                        });
-                      }}
-                      className="px-5 py-2 rounded bg-black text-white hover:bg-gray-800"
-                    >
-                      変更
-                    </button>
-                  </div>
-                </div>
+            <>
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => !isReadOnly && setIsPasswordModalOpen(true)}
+                  className={`px-5 py-2 rounded ${
+                    isReadOnly
+                      ? "bg-gray-300 text-gray-500"
+                      : "bg-gray-800 text-white hover:bg-gray-700"
+                  }`}
+                  disabled={isReadOnly}
+                >
+                  パスワードを変更
+                </button>
               </div>
-            </section>
+              <PasswordModal
+                id={editingUser.id}
+                isOpen={isPasswordModalOpen}
+                onClose={() => setIsPasswordModalOpen(false)}
+              />
+            </>
           ) : (
             <>
               <div className="grid grid-cols-1 gap-4">
@@ -241,6 +358,11 @@ const UserForm: React.FC<UserFormProps> = ({
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
+                  {errors.password && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.password}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -255,6 +377,11 @@ const UserForm: React.FC<UserFormProps> = ({
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
+                  {errors.confirmPassword && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.confirmPassword}
+                    </p>
+                  )}
                 </div>
               </div>
             </>
@@ -270,8 +397,13 @@ const UserForm: React.FC<UserFormProps> = ({
             キャンセル
           </button>
           <button
-            onClick={onSubmit}
-            className="px-5 py-2 rounded bg-black text-white hover:bg-gray-800"
+            onClick={handleSubmit}
+            className={`px-5 py-2 rounded ${
+              isReadOnly
+                ? "bg-gray-300 text-gray-500"
+                : "bg-black text-white hover:bg-gray-800"
+            }`}
+            disabled={isReadOnly}
           >
             {editingUser ? "変更を保存" : "登録する"}
           </button>

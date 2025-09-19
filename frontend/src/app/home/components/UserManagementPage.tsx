@@ -44,7 +44,6 @@ const UserManagementPage = () => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        console.log(user);
         //ユーザー一覧API
         setUsers(dummyUsers);
       } catch (error) {
@@ -55,7 +54,7 @@ const UserManagementPage = () => {
     };
 
     fetchUsers();
-  }, []);
+  }, [user]);
 
   const handleAddUser = async () => {
     try {
@@ -270,7 +269,16 @@ const UserManagementPage = () => {
                       { label: "ID", key: "id" },
                       { label: "氏名", key: "name" },
                       { label: "メールアドレス", key: "email" },
-                      { label: "会社名", key: "companyName" },
+                      {
+                        label:
+                          user?.role === UserRole.COMPANY_ADMIN
+                            ? "部署名"
+                            : "会社名",
+                        key:
+                          user?.role === UserRole.COMPANY_ADMIN
+                            ? "department"
+                            : "companyName",
+                      },
                       { label: "権限", key: "role" },
                       { label: "登録日", key: "createdAt" },
                       { label: "操作", key: "" },
@@ -301,30 +309,32 @@ const UserManagementPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
+                  {paginatedUsers.map((u) => (
+                    <tr key={u.id} className="hover:bg-gray-50">
                       <td className="border-b border-gray-300 px-3 py-2">
-                        {String(user.id).padStart(3, "0")}
+                        {String(u.id).padStart(3, "0")}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
-                        {user.name}
+                        {u.name}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
-                        {user.email}
+                        {u.email}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
-                        {user.companyName}
+                        {user?.role === UserRole.COMPANY_ADMIN
+                          ? u.department
+                          : u.companyName}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
-                        {user.role}
+                        {u.role}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
-                        {user.createdAt}
+                        {u.createdAt}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2 flex justify-center gap-2">
                         <button
                           className="bg-gray-300 hover:bg-gray-400 px-3 py-1 rounded text-sm"
-                          onClick={() => handleEditClick(user)}
+                          onClick={() => handleEditClick(u)}
                         >
                           {"編集"}
                         </button>

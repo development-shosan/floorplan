@@ -70,26 +70,28 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                ステータス
-              </label>
-              <select
-                value={formCompany.status ? "true" : "false"}
-                onChange={(e) =>
-                  setFormCompany({
-                    ...formCompany,
-                    status: e.target.value === "true",
-                  })
-                }
-                className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option value="true">有効</option>
-                <option value="false">無効</option>
-              </select>
+          {editingCompany && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  ステータス
+                </label>
+                <select
+                  value={formCompany.status ? "true" : "false"}
+                  onChange={(e) =>
+                    setFormCompany({
+                      ...formCompany,
+                      status: e.target.value === "true",
+                    })
+                  }
+                  className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="true">有効</option>
+                  <option value="false">無効</option>
+                </select>
+              </div>
             </div>
-          </div>
+          )}
         </section>
 
         <section className="space-y-4">
