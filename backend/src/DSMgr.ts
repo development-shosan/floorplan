@@ -3,11 +3,14 @@
 */
 import DBMgr from './DBMgr';
 import { LoginResult } from './Types/LoginParam';
+import {InputUserInfo } from './Types/MemberParam';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { LoginError } from './ApplicationErrors';
+import { AppConstant } from './SpecificCommons';
 import { env } from '../env';
 import type { StringValue } from 'ms';
+import { Prisma } from "@prisma/client";
 
 export default class DSMgr {
     private dbMgr: DBMgr;
@@ -52,6 +55,56 @@ export default class DSMgr {
             if (err instanceof LoginError) {
                 console.error('Login failed', err);
             }
+            throw err;
+        }
+    }
+
+    public async getUsers(): Promise<void> {
+        try {
+            await this.dbMgr.getUsers();
+        } catch (err) {
+
+            throw err;
+
+        }
+    }
+
+    public async createUser(inputUserInfo: InputUserInfo): Promise<void> {
+
+        try {
+            const hashedPassword = await bcrypt.hash(inputUserInfo.password, AppConstant.BCRYPT.SALT_ROUNDS);
+            const userInfo: InputUserInfo = { ...inputUserInfo, password: hashedPassword };
+            await this.dbMgr.createUser(userInfo);
+        } catch (err) {
+            if (err instanceof Prisma.PrismaClientKnownRequestError &&
+                err.code === "P2002") {
+                    // P2002 = Unique constraint violation
+                    const target = err.meta?.target;
+                    if (Array.isArray(target) && target.includes("email")) {
+                        throw new Error("Email already exists");
+                }
+            }
+            throw err;
+        }
+    }
+
+    public async updateUser(userId: number, inputUserInfo: InputUserInfo): Promise<void> {
+        try {
+            const hashedPassword = await bcrypt.hash(inputUserInfo.password, AppConstant.BCRYPT.SALT_ROUNDS);
+            const userInfo: InputUserInfo = { ...inputUserInfo, password: hashedPassword };
+            await this.dbMgr.updateUser(userId, userInfo);
+        } catch (err) {
+            // TODO email error setting??
+            // new Error("Email already exists");
+            throw err;
+
+        }
+    }
+
+    public async deleteUser(userId: number): Promise<void> {
+        try {
+            await this.dbMgr.deleteUser(userId);
+        } catch (err) {
             throw err;
         }
     }

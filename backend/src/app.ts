@@ -2,12 +2,14 @@
    src/app.ts
 */
 import express from 'express';
+import { Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import DSMgr from './DSMgr';
 import { LoginError } from './ApplicationErrors';
 import morgan from 'morgan';
 import cors from 'cors';
-import { refreshTokenIfValid } from "./middlewares/auth.middleware";
+import { refreshTokenIfValid } from './middlewares/auth.middleware';
+import { body, param, query, validationResult } from 'express-validator';
 dotenv.config(); // .env ファイルを読み込む
 
 const app = express();
@@ -63,15 +65,98 @@ router.post('/login', async (req, res, next) => {
     }
 });
 
-// TODO: Test only – to be removed
-/**
- *      Request param:
- *          curl -i -X GET -H "Content-Type: application/json"
- *               -H "Authorization: TOKEN" http://localhost:4000/api/v1/tokenTest
- *
- */
-router.get('/tokenTest', refreshTokenIfValid, (req, res) => {
-    res.status(200).send('Token successfully verified and reissued.');
+
+
+router.get('/members', async (req, res, next) => {
+    try {
+
+        // role, companyId param
+        const result = await dsMgr.getUsers();
+        res.json(result);
+
+    } catch (err) {
+        return next(err);
+    }
+});
+
+router.post('/member', [
+    body('name').trim().notEmpty().isString(),
+    body('companyId').trim().notEmpty().isNumeric(),
+    body('email').trim().notEmpty().isEmail().normalizeEmail(),
+    body('password').notEmpty().isString(),
+    body('role').trim().notEmpty().isString(),
+    body('department').trim().notEmpty().isString(),
+    body('phoneNumber').trim().notEmpty().isString()
+    ],
+    // refreshTokenIfValid,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const errors = validationResult(req);
+            if (!errors.isEmpty()) {
+                return res.status(400).json({ errors: errors.array() });
+            }
+            await dsMgr.createUser(req.body);
+            res.status(200);
+
+        } catch (err) {
+
+            res.status(500);
+            return next(err);
+        }
+});
+
+// /**
+//  *
+//  */
+router.put('/member/:id', [
+    param('id').exists().trim().isNumeric(),
+    body('name').trim().notEmpty().isString(),
+    body('companyId').trim().notEmpty().isNumeric(),
+    body('email').trim().notEmpty().isEmail().normalizeEmail(),
+    body('password').notEmpty().isString(),
+    body('role').trim().notEmpty().isString(),
+    body('department').trim().notEmpty().isString(),
+    body('phoneNumber').trim().notEmpty().isString(),
+    body('status').trim().notEmpty().isBoolean()
+    ],
+    // refreshTokenIfValid,
+    async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+        await dsMgr.updateUser(Number(req.params.id), req.body);
+        res.status(200);
+
+    } catch (err) {
+
+        res.status(500);
+        return next(err);
+    }
+});
+
+// /**
+//  *
+//  */
+router.patch('/member/:id', [
+    param('id').exists().trim().isNumeric()
+    ],
+    // refreshTokenIfValid,
+    async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+        await dsMgr.deleteUser(Number(req.params.id));
+        res.status(200);
+
+    } catch (err) {
+
+        res.status(500);
+        return next(err);
+    }
 });
 
 app.listen(PORT, () => {
