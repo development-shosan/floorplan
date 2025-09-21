@@ -3,7 +3,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -13,46 +12,46 @@ datasource db {
 
 // 会社
 model Company {
-  id             Int       @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   name           String // 会社名
   nameKana       String? // 会社名（カナ）
   representative String? // 代表者名
   email          String? // 連絡先メールアドレス
-  status         Boolean   @default(true) // ステータス
+  status         Boolean  @default(true) // ステータス
   postalCode     String? // 郵便番号
   prefecture     String? // 都道府県
   city           String? // 市区町村
   streetAddress  String? // それ以降の住所
-  createdAt      DateTime  @default(now()) // 登録日
+  createdAt      DateTime @default(now()) // 登録日
   createdById    Int?
-  createdBy      User?     @relation("CreatedCompanies", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "company_created_by_fk")
-  updatedAt      DateTime  @updatedAt // 修正日
+  createdBy      User?    @relation("CreatedCompanies", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "company_created_by_fk")
+  updatedAt      DateTime @updatedAt // 修正日
   updatedById    Int?
-  updatedBy      User?     @relation("UpdatedCompanies", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "company_updated_by_fk")
-  deleted        Boolean   @default(false) // 削除フラグ
+  updatedBy      User?    @relation("UpdatedCompanies", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "company_updated_by_fk")
+  deleted        Boolean  @default(false) // 削除フラグ
   members        User[]
 }
 
 model User {
-  id              Int       @id @default(autoincrement())
-  email           String    @unique
+  id              Int             @id @default(autoincrement())
+  email           String          @unique
   name            String?
   password        String?
   department      String?
   phoneNumber     String?
-  status          Boolean   @default(true)
-  role            Role      @default(MEMBER)
-  createdAt       DateTime  @default(now()) // 登録日
+  status          Boolean         @default(true)
+  role            Role            @default(MEMBER)
+  createdAt       DateTime        @default(now()) // 登録日
   createdById     Int?
-  createdBy       User?     @relation("UsersCreated", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_created_by_fk")
-  updatedAt       DateTime  @updatedAt // 修正日
+  createdBy       User?           @relation("UsersCreated", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_created_by_fk")
+  updatedAt       DateTime        @updatedAt // 修正日
   updatedById     Int?
-  updatedBy       User?     @relation("UsersUpdated", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_updated_by_fk")
-  deleted         Boolean   @default(false) // 削除フラグ
+  updatedBy       User?           @relation("UsersUpdated", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_updated_by_fk")
+  deleted         Boolean         @default(false) // 削除フラグ
   companyId       Int
-  company         Company   @relation(fields: [companyId], references: [id], map: "user_company_fk")
-  invitation      Invitation? @relation(fields: [invitationId], references: [id])
-  invitationId    String?   @unique
+  company         Company         @relation(fields: [companyId], references: [id], map: "user_company_fk")
+  invitation      Invitation?     @relation(fields: [invitationId], references: [id])
+  invitationId    String?         @unique
   historyParents  HistoryParent[]
   historyChildren HistoryChild[]
 
@@ -84,21 +83,21 @@ model HistoryParent {
 
 // 履歴子テーブル
 model HistoryChild {
-  id               Int      @id @default(autoincrement())
+  id               Int           @id @default(autoincrement())
   historyParentId  Int // 親ID
   historyParent    HistoryParent @relation(fields: [historyParentId], references: [id], map: "history_child_parent_fk")
   tag              String? // タグ
   floorplanJson    Json // 間取図のjson
-  isDownloaded     Boolean  @default(false) // ダウンロード有無
+  isDownloaded     Boolean       @default(false) // ダウンロード有無
   pdfPath          String? // PDFデータパス
-  isFavorite       Boolean  @default(false) // お気に入り
+  isFavorite       Boolean       @default(false) // お気に入り
   constructionName String? // 工事名称
   scale            String? // 縮尺
   drawingFormat    String? // 図面形式
-  createdAt        DateTime @default(now()) // 登録日
+  createdAt        DateTime      @default(now()) // 登録日
   createdById      Int // 登録者ID
-  createdBy        User     @relation(fields: [createdById], references: [id], map: "history_child_created_by_fk")
-  deleted          Boolean  @default(false) // 削除フラグ
+  createdBy        User          @relation(fields: [createdById], references: [id], map: "history_child_created_by_fk")
+  deleted          Boolean       @default(false) // 削除フラグ
 }
 
 // ユーザー招待を管理するモデル
