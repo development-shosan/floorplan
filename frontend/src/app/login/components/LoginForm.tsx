@@ -35,6 +35,8 @@ const LoginForm: React.FC = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if (loading) return;
+
     setEmailError("");
     setPasswordError("");
 
@@ -141,7 +143,10 @@ const LoginForm: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full bg-[#667eea] hover:bg-[#5a6cdb] text-white font-bold py-2 px-4 rounded-sm transition duration-300"
+            disabled={loading}
+            className={`w-full text-white font-bold py-2 px-4 rounded-sm transition duration-300 ${
+              loading ? "bg-gray-400" : "bg-[#667eea] hover:bg-[#5a6cdb]"
+            }`}
           >
             {loading ? "ログイン中..." : "ログイン"}
           </button>
