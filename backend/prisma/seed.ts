@@ -20,7 +20,14 @@ async function main() {
         data: {
           id: 1,
           name: 'Default Company',
+          nameKana: 'デフォルトカンパニー',
+          representative: '代表者名',
+          email: 'info@defaultcompany.com',
           status: true,
+          postalCode: '100-0001',
+          prefecture: '東京都',
+          city: '千代田区',
+          streetAddress: '千代田1-1-1',
           deleted: false,
         },
       });
@@ -30,17 +37,20 @@ async function main() {
     // パスワードをハッシュ化
     const hashedPassword = await bcrypt.hash(adminPassword, saltRounds);
 
-    // 管理者ユーザーをupsert（存在すれば更新、なければ作成）
-    const adminUser = await prisma.user.upsert({
-      where: { email: adminEmail },
-      update: {
-        password: hashedPassword,
-        role: Role.SYSTEM_ADMIN,
-        companyId: company.id,
-        name: 'Admin User',
-        status: true,
-      },
-      create: {
+    // id=1のユーザーが存在するかチェック
+    const existingAdminUser = await prisma.user.findUnique({
+      where: { id: 1 },
+    });
+
+    if (existingAdminUser) {
+      console.log(`User with ID 1 (${existingAdminUser.email}) already exists. Skipping user creation.`);
+      return; // ユーザー作成をスキップ
+    }
+
+    // 管理者ユーザーを作成
+    const adminUser = await prisma.user.create({
+      data: {
+        id: 1, // id=1で作成
         email: adminEmail,
         password: hashedPassword,
         role: Role.SYSTEM_ADMIN,
@@ -50,7 +60,8 @@ async function main() {
         deleted: false,
       },
     });
-    console.log(`Admin user ${adminUser.email} upserted successfully with password: ${adminPassword}`);
+    console.log(`Admin user ${adminUser.email} (ID: ${adminUser.id}) created successfully with password: ${adminPassword}`);
+
   } catch (error) {
     console.error('Error seeding data:', error);
   } finally {
