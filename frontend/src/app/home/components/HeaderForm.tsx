@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { UserRole, UserRoleLabel } from "@/constants/roles";
 import { LoginResponse } from "@/hooks/userContext";
-import { HomeIcon } from "@heroicons/react/16/solid";
+import { HomeIcon } from "@heroicons/react/20/solid";
 
 interface MenuItem {
   label: string;
