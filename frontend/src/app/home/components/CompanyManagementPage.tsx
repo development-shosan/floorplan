@@ -2,13 +2,20 @@
 
 import React, { useEffect, useState } from "react";
 import Pagination from "./common/Pagination";
-import { Company, dummyCompanies, CompanyFormData } from "@/constants/company";
+import { Company, CompanyFormData } from "@/constants/company";
 import CompanyForm from "./CompanyForm";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/16/solid";
+import {
+  createCompany,
+  deleteCompany,
+  getCompanyList,
+  updateCompany,
+} from "@/lib/api";
+import { redirect } from "next/navigation";
 
 const CompanyManagementPage = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -36,21 +43,24 @@ const CompanyManagementPage = () => {
     direction: "asc",
   });
 
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        setLoading(true);
-        setCompanies(dummyCompanies);
-      } catch (error) {
-        console.error("会社一覧の取得に失敗しました:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  //会社情報一覧API
+  const fetchCompanies = async () => {
+    try {
+      setLoading(true);
+      const data: Company[] = await getCompanyList();
+      setCompanies(data);
+    } catch (error) {
+      console.error("会社一覧の取得に失敗しました:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchCompanies();
   }, []);
 
+  // 新規会社登録
   const handleAddCompany = async () => {
     try {
       // 同じ会社が存在するか確認
@@ -63,32 +73,35 @@ const CompanyManagementPage = () => {
         return;
       }
 
-      const newCompany: Company = {
-        id: companies.length + 1,
+      setLoading(true);
+
+      const newCompany: CompanyFormData = {
         name: formCompany.name,
         nameKana: formCompany.nameKana,
         representative: formCompany.representative,
         email: formCompany.email,
-        status: true,
         postalCode: formCompany.postalCode,
         prefecture: formCompany.prefecture,
         city: formCompany.city,
         streetAddress: formCompany.streetAddress,
-        createdAt: new Date().toISOString().split("T")[0],
-        updatedAt: new Date().toISOString().split("T")[0],
-        members: 0,
+        status: true,
       };
-      setCompanies([...companies, newCompany]);
+      //ユーザー情報登録API
+      createCompany(newCompany);
       resetForm();
       alert("会社を登録しました");
     } catch (error) {
       console.error(error);
       alert("会社の登録に失敗しました");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // 会社情報編集
   const handleUpdateCompany = async () => {
     if (!editingCompany) return;
+
     try {
       // 同じ会社が存在するか確認
       const exists = companies.some(
@@ -102,28 +115,28 @@ const CompanyManagementPage = () => {
         return;
       }
 
-      const updatedCompany = companies.map((val) =>
-        val.id === editingCompany.id
-          ? {
-              ...val,
-              name: formCompany.name,
-              nameKana: formCompany.nameKana,
-              representative: formCompany.representative,
-              email: formCompany.email,
-              postalCode: formCompany.postalCode,
-              prefecture: formCompany.prefecture,
-              city: formCompany.city,
-              streetAddress: formCompany.streetAddress,
-              status: formCompany.status,
-            }
-          : val
-      );
-      setCompanies(updatedCompany);
+      setLoading(true);
+
+      const updatedCompany: CompanyFormData = {
+        name: formCompany.name,
+        nameKana: formCompany.nameKana,
+        representative: formCompany.representative,
+        email: formCompany.email,
+        postalCode: formCompany.postalCode,
+        prefecture: formCompany.prefecture,
+        city: formCompany.city,
+        streetAddress: formCompany.streetAddress,
+        status: formCompany.status,
+      };
+
+      updateCompany(updatedCompany);
       resetForm();
       alert("会社を編集しました");
     } catch (error) {
       console.error(error);
       alert("会社の編集に失敗しました");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -143,9 +156,11 @@ const CompanyManagementPage = () => {
     setIsFormOpen(false);
   };
 
+  // 編集ボタン
   const handleEditClick = (company: Company) => {
     setEditingCompany(company);
     setFormCompany({
+      id: company.id,
       name: company.name,
       nameKana: company.nameKana,
       representative: company.representative,
@@ -159,14 +174,31 @@ const CompanyManagementPage = () => {
     setIsFormOpen(true);
   };
 
+  // 会社情報削除
+  const handleDelete = async () => {
+    if (!editingCompany) return;
+
+    try {
+      setLoading(true);
+      //ユーザー情報削除API
+      deleteCompany(formCompany);
+      resetForm();
+      alert("ユーザーを削除しました");
+    } catch (error) {
+      console.error(error);
+      alert("ユーザーの削除に失敗しました");
+    } finally {
+      setLoading(false);
+      redirect("/home");
+    }
+  };
+
+  // ソート
   const filteredCompanies = companies.filter(
     (company) =>
-      String(company.id).includes(search) ||
-      company.name.includes(search) ||
-      company.representative.includes(search)
+      company.name.includes(search) || company.representative.includes(search)
   );
 
-  // 정렬
   const sortedCompanies = React.useMemo(() => {
     const sortableCompanies = [...filteredCompanies];
     if (sortConfig !== null) {
@@ -209,7 +241,6 @@ const CompanyManagementPage = () => {
     }
   };
 
-  // 페이지네이션
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const totalPages = Math.ceil(sortedCompanies.length / itemsPerPage);
@@ -233,6 +264,8 @@ const CompanyManagementPage = () => {
             setIsFormOpen(false);
           }}
           onSubmit={editingCompany ? handleUpdateCompany : handleAddCompany}
+          handleDelete={handleDelete}
+          loading={loading}
         />
       ) : (
         <>

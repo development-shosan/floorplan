@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Pagination from "./common/Pagination";
-import { dummyUsers, User, UserFormData } from "@/constants/user";
+import { User, UserFormData } from "@/constants/user";
 import UserForm from "./UserForm";
 import { useUser } from "@/hooks/userContext";
 import { UserRole } from "@/constants/roles";
@@ -11,6 +11,8 @@ import {
   ChevronUpIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/16/solid";
+import { createUser, deleteUser, getUserList, updateUser } from "@/lib/api";
+import { redirect } from "next/navigation";
 
 const UserManagementPage = () => {
   const { user } = useUser();
@@ -21,7 +23,7 @@ const UserManagementPage = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formUser, setFormUser] = useState<UserFormData>({
     name: "",
-    companyId: user?.role === UserRole.COMPANY_ADMIN ? user.companyId : 0,
+    companyId: user?.role === UserRole.COMPANY_ADMIN ? user.companyId : 1,
     companyName: "",
     email: "",
     // システム管理者は会社管理者ユーザーのみ、会社管理者は一般ユーザーのみ登録可能
@@ -40,22 +42,24 @@ const UserManagementPage = () => {
     direction: "asc",
   });
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
-        //ユーザー一覧API
-        setUsers(dummyUsers);
-      } catch (error) {
-        console.error("ユーザー一覧の取得に失敗しました:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  //ユーザー情報一覧API
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const data: User[] = await getUserList();
+      setUsers(data);
+    } catch (error) {
+      console.error("ユーザー一覧の取得に失敗しました:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchUsers();
   }, [user]);
 
+  // 新規ユーザー登録
   const handleAddUser = async () => {
     try {
       if (user?.role === UserRole.SYSTEM_ADMIN) {
@@ -68,64 +72,74 @@ const UserManagementPage = () => {
         }
       }
 
-      const newUser: User = {
-        id: users.length + 1,
+      setLoading(true);
+
+      const newUser: UserFormData = {
         name: formUser.name,
-        email: formUser.email,
-        role: formUser.role,
         companyId:
           user?.role === UserRole.COMPANY_ADMIN
             ? user.companyId
             : formUser.companyId,
         companyName: formUser.companyName,
+        email: formUser.email,
+        password: formUser.password,
+        role: formUser.role,
         department: formUser.department,
         phoneNumber: formUser.phoneNumber,
-        createdAt: new Date().toISOString().split("T")[0],
         status: true,
       };
-      setUsers([...users, newUser]);
+
+      //ユーザー情報登録API
+      createUser(newUser);
       resetForm();
       alert("ユーザーを登録しました");
     } catch (error) {
       console.error(error);
       alert("ユーザーの登録に失敗しました");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ユーザー情報編集
   const handleUpdateUser = async () => {
     if (!editingUser) return;
+
     try {
-      const updatedUser = users.map((val) =>
-        val.id === editingUser.id
-          ? {
-              ...val,
-              name: formUser.name,
-              companyId:
-                user?.role === UserRole.COMPANY_ADMIN
-                  ? user.companyId
-                  : formUser.companyId,
-              companyName: formUser.companyName,
-              email: formUser.email,
-              role: formUser.role,
-              department: formUser.department,
-              phoneNumber: formUser.phoneNumber,
-              status: formUser.status,
-            }
-          : val
-      );
-      setUsers(updatedUser);
+      setLoading(true);
+
+      const updatedUser: UserFormData = {
+        id: formUser.id,
+        name: formUser.name,
+        companyId:
+          user?.role === UserRole.COMPANY_ADMIN
+            ? user.companyId
+            : formUser.companyId,
+        companyName: formUser.companyName,
+        email: formUser.email,
+        password: formUser.password,
+        role: formUser.role,
+        department: formUser.department,
+        phoneNumber: formUser.phoneNumber,
+        status: true,
+      };
+
+      //ユーザー情報登録API
+      updateUser(updatedUser);
       resetForm();
       alert("ユーザーを編集しました");
     } catch (error) {
       console.error(error);
       alert("ユーザーの編集に失敗しました");
+    } finally {
+      setLoading(false);
     }
   };
 
   const resetForm = () => {
     setFormUser({
       name: "",
-      companyId: user?.role === UserRole.COMPANY_ADMIN ? user.companyId : 0,
+      companyId: user?.role === UserRole.COMPANY_ADMIN ? user.companyId : 1,
       companyName: "",
       email: "",
       role: user?.role === UserRole.SYSTEM_ADMIN ? "COMPANY_ADMIN" : "MEMBER",
@@ -137,9 +151,11 @@ const UserManagementPage = () => {
     setIsFormOpen(false);
   };
 
+  // 編集ボタン
   const handleEditClick = (user: User) => {
     setEditingUser(user);
     setFormUser({
+      id: user.id,
       name: user.name,
       companyId: user.companyId,
       companyName: user.companyName,
@@ -152,20 +168,29 @@ const UserManagementPage = () => {
     setIsFormOpen(true);
   };
 
-  const filteredUsers = users
-    .filter((u) => {
-      // サーバーから除外されますが念のために
-      if (user?.role === UserRole.COMPANY_ADMIN) {
-        return u.companyId === user.companyId && u.status;
-      }
-      return true;
-    })
-    .filter(
-      (u) =>
-        String(u.id).includes(search) ||
-        u.name.includes(search) ||
-        u.email.includes(search)
-    );
+  // ユーザー情報削除
+  const handleDelete = async () => {
+    if (!editingUser) return;
+
+    try {
+      setLoading(true);
+      //ユーザー情報削除API
+      deleteUser(formUser);
+      resetForm();
+      alert("ユーザーを削除しました");
+    } catch (error) {
+      console.error(error);
+      alert("ユーザーの削除に失敗しました");
+    } finally {
+      setLoading(false);
+      redirect("/home");
+    }
+  };
+
+  // ソート
+  const filteredUsers = users.filter(
+    (u) => u.name.includes(search) || u.email.includes(search)
+  );
 
   const sortedUsers = React.useMemo(() => {
     const sortableUsers = [...filteredUsers];
@@ -232,6 +257,8 @@ const UserManagementPage = () => {
             setIsFormOpen(false);
           }}
           onSubmit={editingUser ? handleUpdateUser : handleAddUser}
+          handleDelete={handleDelete}
+          loading={loading}
         />
       ) : (
         <>

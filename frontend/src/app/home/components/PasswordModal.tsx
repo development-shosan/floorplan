@@ -1,5 +1,6 @@
 "use client";
 
+import { changePassword } from "@/lib/api";
 import React, { useState } from "react";
 
 interface PasswordModalProps {
@@ -46,15 +47,15 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  // 変更
   const handleSubmit = async () => {
     if (!validatePassword()) return;
-
     if (loading) return;
-    setLoading(true);
 
     try {
-      console.log(id, currentPassword, newPassword, confirmPassword);
-      // const res = await fetch(`/api/v1/password/${id}`, { ... });
+      setLoading(true);
+      //ユーザーパスワード変更API
+      changePassword(id, currentPassword, newPassword);
 
       alert("パスワードを変更しました。");
       setCurrentPassword("");
@@ -146,7 +147,11 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
             <button
               type="button"
               onClick={handleSubmit}
-              className="px-4 py-2 rounded bg-black text-white hover:bg-gray-800"
+              className={`px-4 py-2 rounded ${
+                loading
+                  ? "bg-gray-300 text-gray-500"
+                  : "bg-black text-white hover:bg-gray-800"
+              }`}
               disabled={loading}
             >
               {loading ? "変更中..." : "変更"}

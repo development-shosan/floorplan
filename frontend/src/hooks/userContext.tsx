@@ -1,5 +1,6 @@
 "use client";
 
+import { getTokenPayload } from "@/lib/api";
 import React, {
   createContext,
   useState,
@@ -44,11 +45,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const setUser = (userData: LoginResponse | null) => {
-    setUserState(userData);
     if (userData) {
-      sessionStorage.setItem("user", JSON.stringify(userData));
+      const payload = getTokenPayload(userData.token);
+      if (payload) {
+        userData.role = payload.role;
+        userData.companyId = payload.companyId;
+        sessionStorage.setItem("user", JSON.stringify(userData));
+      }
+      setUserState(userData);
     } else {
       sessionStorage.removeItem("user");
+      setUserState(null);
     }
   };
 

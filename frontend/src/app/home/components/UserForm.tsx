@@ -1,11 +1,12 @@
 "use client";
 
-import { Company, dummyCompanies } from "@/constants/company";
+import { Company } from "@/constants/company";
 import { UserRole } from "@/constants/roles";
 import { User, UserFormData } from "@/constants/user";
 import { useUser } from "@/hooks/userContext";
 import React, { useEffect, useState } from "react";
 import PasswordModal from "./PasswordModal";
+import { getCompanyList } from "@/lib/api";
 
 interface UserFormProps {
   formUser: UserFormData;
@@ -13,6 +14,8 @@ interface UserFormProps {
   editingUser: User | null;
   onCancel: () => void;
   onSubmit: () => void;
+  handleDelete: () => void;
+  loading: boolean;
 }
 
 const UserForm: React.FC<UserFormProps> = ({
@@ -21,6 +24,8 @@ const UserForm: React.FC<UserFormProps> = ({
   editingUser,
   onCancel,
   onSubmit,
+  handleDelete,
+  loading,
 }) => {
   const { user } = useUser();
 
@@ -29,9 +34,18 @@ const UserForm: React.FC<UserFormProps> = ({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isChecked, setIsChecked] = useState(false);
 
   useEffect(() => {
-    setCompanies(dummyCompanies);
+    const fetchCompanies = async () => {
+      try {
+        const data: Company[] = await getCompanyList();
+        setCompanies(data);
+      } catch (error) {
+        console.error("会社一覧の取得に失敗しました:", error);
+      }
+    };
+    fetchCompanies();
   }, []);
 
   // システム管理者が一般ユーザーを編集する時
@@ -39,6 +53,7 @@ const UserForm: React.FC<UserFormProps> = ({
     user?.role === UserRole.SYSTEM_ADMIN &&
     editingUser?.role === UserRole.MEMBER;
 
+  // バリデーションチェック
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
 
@@ -47,7 +62,7 @@ const UserForm: React.FC<UserFormProps> = ({
     }
 
     if (user?.role === UserRole.SYSTEM_ADMIN && !editingUser) {
-      if (!formUser.companyId) {
+      if (formUser.companyId === 1) {
         newErrors.companyId = "会社を選択してください。";
       }
     }
@@ -301,92 +316,132 @@ const UserForm: React.FC<UserFormProps> = ({
           </h2>
 
           <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                メールアドレス
-              </label>
-              <input
-                type="text"
-                value={formUser.email}
-                onChange={(e) =>
-                  !isReadOnly &&
-                  setFormUser({ ...formUser, email: e.target.value })
-                }
-                disabled={!!editingUser || isReadOnly}
-                className={`w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                  editingUser || isReadOnly ? "bg-gray-100" : ""
-                }`}
-              />
-              {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+            <div className="flex flex-col md:flex-row md:items-end md:gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-1">
+                  メールアドレス
+                </label>
+                <input
+                  type="text"
+                  value={formUser.email}
+                  onChange={(e) =>
+                    !isReadOnly &&
+                    setFormUser({ ...formUser, email: e.target.value })
+                  }
+                  disabled={!!editingUser || isReadOnly}
+                  className={`w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                    editingUser || isReadOnly ? "bg-gray-100" : ""
+                  }`}
+                />
+                {errors.email && (
+                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                )}
+              </div>
+
+              {editingUser && (
+                <div className="mt-4 md:mt-0">
+                  <button
+                    type="button"
+                    onClick={() => !isReadOnly && setIsPasswordModalOpen(true)}
+                    className={`px-5 py-2 rounded ${
+                      isReadOnly
+                        ? "bg-gray-300 text-gray-500"
+                        : "bg-gray-800 text-white hover:bg-gray-700"
+                    }`}
+                    disabled={isReadOnly}
+                  >
+                    パスワード変更
+                  </button>
+                  <PasswordModal
+                    id={editingUser.id}
+                    isOpen={isPasswordModalOpen}
+                    onClose={() => setIsPasswordModalOpen(false)}
+                  />
+                </div>
               )}
             </div>
+
+            {!editingUser && (
+              <>
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      パスワード
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    {errors.password && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.password}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      パスワード（確認）
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                    {errors.confirmPassword && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.confirmPassword}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-
-          {editingUser ? (
-            <>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => !isReadOnly && setIsPasswordModalOpen(true)}
-                  className={`px-5 py-2 rounded ${
-                    isReadOnly
-                      ? "bg-gray-300 text-gray-500"
-                      : "bg-gray-800 text-white hover:bg-gray-700"
-                  }`}
-                  disabled={isReadOnly}
-                >
-                  パスワードを変更
-                </button>
-              </div>
-              <PasswordModal
-                id={editingUser.id}
-                isOpen={isPasswordModalOpen}
-                onClose={() => setIsPasswordModalOpen(false)}
-              />
-            </>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    パスワード
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                  {errors.password && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.password}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    パスワード（確認）
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                  {errors.confirmPassword && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.confirmPassword}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
         </section>
+
+        {editingUser && editingUser.status === false && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-medium border-b border-gray-300 pb-2">
+              危険な操作
+            </h2>
+            <div className="border p-4 rounded-lg bg-gray-50 border-gray-200">
+              <h3>⚠️ アカウント削除</h3>
+              <p className="text-gray-700 px-4 m-2 text-sm">
+                このユーザーのアカウントを完全に削除します。この操作は取り消すことができません。
+              </p>
+              <label className="flex items-center px-4 m-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mr-2"
+                  checked={isChecked}
+                  onChange={(e) => setIsChecked(e.target.checked)}
+                />
+                削除することを理解し、同意します
+              </label>
+              <button
+                className={`px-4 py-2 ml-6 rounded-md text-white text-sm ${
+                  isChecked ? "bg-gray-600 hover:bg-gray-800" : "bg-gray-400"
+                }`}
+                onClick={() => {
+                  if (!isChecked) {
+                    alert("チェックボックスを確認してください。");
+                    return;
+                  }
+                  handleDelete();
+                }}
+                disabled={!isChecked}
+              >
+                🗑️ アカウントを削除
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* ボタン */}
         <div className="flex justify-end gap-3 mt-4">
@@ -399,11 +454,11 @@ const UserForm: React.FC<UserFormProps> = ({
           <button
             onClick={handleSubmit}
             className={`px-5 py-2 rounded ${
-              isReadOnly
+              isReadOnly || loading
                 ? "bg-gray-300 text-gray-500"
                 : "bg-black text-white hover:bg-gray-800"
             }`}
-            disabled={isReadOnly}
+            disabled={isReadOnly || loading}
           >
             {editingUser ? "変更を保存" : "登録する"}
           </button>

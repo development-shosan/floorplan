@@ -10,6 +10,8 @@ interface CompanyFormProps {
   editingCompany: Company | null;
   onCancel: () => void;
   onSubmit: () => void;
+  handleDelete: () => void;
+  loading: boolean;
 }
 
 const CompanyForm: React.FC<CompanyFormProps> = ({
@@ -18,8 +20,39 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
   editingCompany,
   onCancel,
   onSubmit,
+  handleDelete,
+  loading,
 }) => {
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isChecked, setIsChecked] = useState(false);
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formCompany.name.trim()) newErrors.name = "会社名は必須です";
+    if (!formCompany.nameKana.trim())
+      newErrors.nameKana = "会社名（カナ）は必須です";
+    if (!formCompany.representative.trim())
+      newErrors.representative = "代表者名は必須です";
+    if (!formCompany.email.trim()) newErrors.email = "メールアドレスは必須です";
+    else if (!/^[\w.-]+@[\w.-]+\.[A-Za-z]{2,6}$/.test(formCompany.email))
+      newErrors.email = "メールアドレスの形式が正しくありません";
+    if (!formCompany.postalCode.trim())
+      newErrors.postalCode = "郵便番号は必須です";
+    if (!formCompany.prefecture)
+      newErrors.prefecture = "都道府県を選択してください";
+    if (!formCompany.city.trim()) newErrors.city = "市区町村は必須です";
+    if (!formCompany.streetAddress.trim())
+      newErrors.streetAddress = "番地・建物名は必須です";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (!validate()) return;
+    onSubmit();
+  };
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -55,6 +88,9 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
                 }
                 className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
+              {errors.name && (
+                <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">
@@ -68,6 +104,9 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
                 }
                 className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
+              {errors.nameKana && (
+                <p className="text-red-500 text-sm mt-1">{errors.nameKana}</p>
+              )}
             </div>
           </div>
           {editingCompany && (
@@ -109,6 +148,9 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
                 }
                 className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
+              {errors.postalCode && (
+                <p className="text-red-500 text-sm mt-1">{errors.postalCode}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">都道府県</label>
@@ -126,6 +168,9 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
                   </option>
                 ))}
               </select>
+              {errors.prefecture && (
+                <p className="text-red-500 text-sm mt-1">{errors.prefecture}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">市区町村</label>
@@ -137,6 +182,9 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
                 }
                 className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
+              {errors.city && (
+                <p className="text-red-500 text-sm mt-1">{errors.city}</p>
+              )}
             </div>
           </div>
           <div>
@@ -154,6 +202,11 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
               }
               className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
+            {errors.streetAddress && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.streetAddress}
+              </p>
+            )}
           </div>
         </section>
 
@@ -175,6 +228,11 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
                 }
                 className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
+              {errors.representative && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.representative}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">
@@ -188,6 +246,9 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
                 }
                 className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+              )}
             </div>
           </div>
         </section>
@@ -220,7 +281,7 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
                     alert("チェックボックスを確認してください。");
                     return;
                   }
-                  alert("アカウントを削除します！");
+                  handleDelete();
                 }}
                 disabled={!isChecked}
               >
@@ -238,8 +299,13 @@ const CompanyForm: React.FC<CompanyFormProps> = ({
             キャンセル
           </button>
           <button
-            onClick={onSubmit}
-            className="px-5 py-2 rounded bg-black text-white hover:bg-gray-800"
+            onClick={handleSubmit}
+            className={`px-5 py-2 rounded ${
+              loading
+                ? "bg-gray-300 text-gray-500"
+                : "bg-black text-white hover:bg-gray-800"
+            }`}
+            disabled={loading}
           >
             {editingCompany ? "変更を保存" : "登録する"}
           </button>
