@@ -2,6 +2,7 @@
 
 import { LoginResponse, useUser } from "@/hooks/userContext";
 import { loginUser } from "@/lib/api";
+import { HomeIcon } from "@heroicons/react/20/solid";
 import { useRouter } from "next/navigation";
 import React, { useState, FormEvent, useEffect } from "react";
 
@@ -39,6 +40,7 @@ const LoginForm: React.FC = () => {
 
     setEmailError("");
     setPasswordError("");
+    setLoginError("");
 
     let isValid = true;
 
@@ -62,11 +64,7 @@ const LoginForm: React.FC = () => {
     try {
       // ログインAPI
       const data: LoginResponse = await loginUser(email, password);
-
       setUser(data);
-
-      // ログイン成功したらHOME画面に遷移
-      router.push("/home");
     } catch (err: unknown) {
       console.error(err);
 
@@ -74,7 +72,7 @@ const LoginForm: React.FC = () => {
 
       if (err instanceof Error) {
         message = err.message.includes("(401)")
-          ? "⚠️ エラー: メールアドレスまたはパスワードが正しくありません (401)"
+          ? "メールアドレスまたはパスワードが正しくありません"
           : `${err.message}`;
       } else {
         message = "⚠️ エラー: 不明なエラーが発生しました";
@@ -88,45 +86,48 @@ const LoginForm: React.FC = () => {
 
   return (
     <>
-      <div className="w-full max-w-[400px] rounded-lg bg-gray-50 shadow-sm px-5 py-6 border-2 border-dashed border-gray-300">
+      <div
+        className="w-[90vw] sm:w-[70vw] md:w-[50vw] lg:w-[40vw] xl:w-[25vw] 
+                rounded-lg bg-gray-50 shadow-sm px-6 py-8 border border-gray-300"
+      >
         {/* タイトル */}
-        <div className="text-center mb-6">
-          <div className="flex justify-center items-center mb-1">
-            <span className="text-3xl">🏠</span>
-            <h1 className="text-[28px] font-bold text-[#667eea] ml-2">
-              間取り生成システム
+        <div className="text-center mb-8">
+          <div className="flex justify-center items-center mb-3">
+            <h1 className="flex items-center text-3xl sm:text-4xl space-x-3">
+              <HomeIcon className="w-10 h-10 sm:w-12 sm:h-12" />
+              <span>Plan Butler</span>
             </h1>
           </div>
-          <p className="text-[16px] text-gray-500">営業支援ツール</p>
+          <p className="text-lg sm:text-xl text-gray-500">{"営業支援ツール"}</p>
         </div>
 
         {/* フォーム */}
         <form onSubmit={handleSubmit}>
-          <div className="mb-5">
+          <div className="mb-6">
             <label
               htmlFor="email"
-              className="block text-gray-600 text-sm font-medium mb-1"
+              className="block text-gray-600 text-base font-medium mb-2"
             >
-              メールアドレス
+              {"メールアドレス"}
             </label>
             <input
               id="email"
               placeholder="example@company.co.jp"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-2 py-2 text-md border border-gray-300 rounded-md bg-white focus:outline-none focus:border-[#667eea]"
+              className="w-full px-3 py-3 text-md border border-gray-300 rounded-md bg-white focus:outline-none focus:border-[#667eea]" // py-2 → py-3
             />
             {emailError && (
-              <p className="text-red-500 text-sm mt-1">{emailError}</p>
+              <p className="text-red-500 text-sm mt-2">{emailError}</p>
             )}
           </div>
 
-          <div className="mb-5">
+          <div className="mb-6">
             <label
               htmlFor="password"
-              className="block text-gray-600 text-sm font-medium mb-1"
+              className="block text-gray-600 text-base font-medium mb-2"
             >
-              パスワード
+              {"パスワード"}
             </label>
             <input
               type="password"
@@ -134,18 +135,18 @@ const LoginForm: React.FC = () => {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-2 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-[#667eea]"
+              className="w-full px-3 py-3 text-md border border-gray-300 rounded-md bg-white focus:outline-none focus:border-[#667eea]"
             />
             {passwordError && (
-              <p className="text-red-500 text-sm mt-1">{passwordError}</p>
+              <p className="text-red-500 text-sm mt-2">{passwordError}</p>
             )}
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className={`w-full text-white font-bold py-2 px-4 rounded-sm transition duration-300 ${
-              loading ? "bg-gray-400" : "bg-[#667eea] hover:bg-[#5a6cdb]"
+            className={`w-full text-white py-3 px-4 rounded-md transition duration-300 ${
+              loading ? "bg-gray-400" : "bg-gray-800 hover:bg-gray-600"
             }`}
           >
             {loading ? "ログイン中..." : "ログイン"}
@@ -153,23 +154,23 @@ const LoginForm: React.FC = () => {
         </form>
 
         {/* パスワード忘れ */}
-        <div className="mt-4 text-center text-sm">
+        <div className="mt-6 text-center text-base">
           <a
             href="#"
             onClick={(e) => {
               e.preventDefault();
               setIsModalVisible(true);
             }}
-            className="text-[#667eea] hover:underline"
+            className="text-gray-500 mb-4 hover:underline"
           >
-            パスワードを忘れた方はこちら
+            {"パスワードを忘れた方はこちら"}
           </a>
         </div>
 
         {/* ログインエラー表示 */}
         {loginError && (
-          <div className="mt-6 p-3 bg-[#FDF9F2] border-l-4 border-[#E5933C] rounded-sm">
-            <p className="flex items-center text-[#B07020] text-[14px]">
+          <div className="mt-8 p-4 bg-[#FDF9F2] border-l-4 border-[#E5933C] rounded-md">
+            <p className="flex items-center text-[#B07020] text-[15px]">
               {loginError}
             </p>
           </div>
@@ -188,9 +189,11 @@ const LoginForm: React.FC = () => {
               <span className="text-2xl">&times;</span>
             </button>
             <div className="text-center">
-              <h3 className="text-lg font-bold text-gray-800 mb-2">お知らせ</h3>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">
+                {"お知らせ"}
+              </h3>
               <p className="text-md text-gray-600">
-                管理者にお問い合わせください
+                {"管理者にお問い合わせください"}
               </p>
             </div>
           </div>
