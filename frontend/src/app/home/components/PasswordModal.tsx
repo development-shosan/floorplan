@@ -19,6 +19,7 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string>("");
 
   if (!isOpen) return null;
 
@@ -51,7 +52,7 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
   const handleSubmit = async () => {
     if (!validatePassword()) return;
     if (loading) return;
-
+    setSubmitError("");
     try {
       setLoading(true);
       //ユーザーパスワード変更API
@@ -65,7 +66,18 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
       onClose();
     } catch (err) {
       console.error(err);
-      alert("サーバーエラーが発生しました。");
+
+      let message: string;
+
+      if (err instanceof Error) {
+        message = err.message.includes("(406)")
+          ? "パスワードが正しくありません"
+          : `${err.message}`;
+      } else {
+        message = "⚠️ エラー: 不明なエラーが発生しました";
+      }
+
+      setSubmitError(message);
     } finally {
       setLoading(false);
     }
@@ -128,6 +140,15 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
               </p>
             )}
           </div>
+
+          {/* エラー表示 */}
+          {submitError && (
+            <div className="mt-8 p-4 bg-[#FDF9F2] border-l-4 border-[#E5933C] rounded-md">
+              <p className="flex items-center text-[#B07020] text-[15px]">
+                {submitError}
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 mt-4">
             <button

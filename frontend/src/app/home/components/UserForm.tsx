@@ -1,7 +1,7 @@
 "use client";
 
 import { Company } from "@/constants/company";
-import { UserRole } from "@/constants/roles";
+import { UserRole, UserRoleLabel } from "@/constants/roles";
 import { User, UserFormData } from "@/constants/user";
 import { useUser } from "@/hooks/userContext";
 import React, { useEffect, useState } from "react";
@@ -14,8 +14,8 @@ interface UserFormProps {
   editingUser: User | null;
   onCancel: () => void;
   onSubmit: () => void;
-  handleDelete: () => void;
   loading: boolean;
+  submitError: string;
 }
 
 const UserForm: React.FC<UserFormProps> = ({
@@ -24,8 +24,8 @@ const UserForm: React.FC<UserFormProps> = ({
   editingUser,
   onCancel,
   onSubmit,
-  handleDelete,
   loading,
+  submitError,
 }) => {
   const { user } = useUser();
 
@@ -34,24 +34,24 @@ const UserForm: React.FC<UserFormProps> = ({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [isChecked, setIsChecked] = useState(false);
 
   useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const data: Company[] = await getCompanyList();
-        setCompanies(data);
-      } catch (error) {
-        console.error("会社一覧の取得に失敗しました:", error);
-      }
-    };
-    fetchCompanies();
-  }, []);
+    if (user?.role === UserRole.SYSTEM_ADMIN && !editingUser) {
+      const fetchCompanies = async () => {
+        try {
+          const data: Company[] = await getCompanyList();
+          setCompanies(data);
+        } catch (error) {
+          console.error("会社一覧の取得に失敗しました:", error);
+        }
+      };
+
+      fetchCompanies();
+    }
+  }, [user?.role, editingUser]);
 
   // システム管理者が一般ユーザーを編集する時
-  const isReadOnly =
-    user?.role === UserRole.SYSTEM_ADMIN &&
-    editingUser?.role === UserRole.MEMBER;
+  const isReadOnly = user?.role === UserRole.SYSTEM_ADMIN && !!editingUser;
 
   // バリデーションチェック
   const validate = () => {
@@ -73,7 +73,7 @@ const UserForm: React.FC<UserFormProps> = ({
 
     if (!formUser.phoneNumber.trim()) {
       newErrors.phoneNumber = "電話番号を入力してください。";
-    } else if (!/^\d{2,4}-\d{2,4}-\d{3,4}$/.test(formUser.phoneNumber)) {
+    } else if (!/^0\d{1,4}-\d{1,4}-\d{3,4}$/.test(formUser.phoneNumber)) {
       newErrors.phoneNumber =
         "正しい形式で入力してください。(例: 03-1234-5678)";
     }
@@ -227,7 +227,7 @@ const UserForm: React.FC<UserFormProps> = ({
                         )
                         .map((role) => (
                           <option key={role} value={role}>
-                            {role}
+                            {UserRoleLabel[role]}
                           </option>
                         ))}
                     </select>
@@ -405,42 +405,13 @@ const UserForm: React.FC<UserFormProps> = ({
           </div>
         </section>
 
-        {editingUser && editingUser.status === false && (
-          <section className="space-y-4">
-            <h2 className="text-xl font-medium border-b border-gray-300 pb-2">
-              危険な操作
-            </h2>
-            <div className="border p-4 rounded-lg bg-gray-50 border-gray-200">
-              <h3>⚠️ アカウント削除</h3>
-              <p className="text-gray-700 px-4 m-2 text-sm">
-                このユーザーのアカウントを完全に削除します。この操作は取り消すことができません。
-              </p>
-              <label className="flex items-center px-4 m-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="mr-2"
-                  checked={isChecked}
-                  onChange={(e) => setIsChecked(e.target.checked)}
-                />
-                削除することを理解し、同意します
-              </label>
-              <button
-                className={`px-4 py-2 ml-6 rounded-md text-white text-sm ${
-                  isChecked ? "bg-gray-600 hover:bg-gray-800" : "bg-gray-400"
-                }`}
-                onClick={() => {
-                  if (!isChecked) {
-                    alert("チェックボックスを確認してください。");
-                    return;
-                  }
-                  handleDelete();
-                }}
-                disabled={!isChecked}
-              >
-                🗑️ アカウントを削除
-              </button>
-            </div>
-          </section>
+        {/* エラー表示 */}
+        {submitError && (
+          <div className="mt-8 p-4 bg-[#FDF9F2] border-l-4 border-[#E5933C] rounded-md">
+            <p className="flex items-center text-[#B07020] text-[15px]">
+              {submitError}
+            </p>
+          </div>
         )}
 
         {/* ボタン */}

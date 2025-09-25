@@ -5,14 +5,13 @@ import Pagination from "./common/Pagination";
 import { User, UserFormData } from "@/constants/user";
 import UserForm from "./UserForm";
 import { useUser } from "@/hooks/userContext";
-import { UserRole } from "@/constants/roles";
+import { UserRole, UserRoleLabel } from "@/constants/roles";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/16/solid";
-import { createUser, deleteUser, getUserList, updateUser } from "@/lib/api";
-import { redirect } from "next/navigation";
+import { createUser, getUserList, updateUser } from "@/lib/api";
 
 const UserManagementPage = () => {
   const { user } = useUser();
@@ -33,7 +32,7 @@ const UserManagementPage = () => {
     status: true,
   });
   const [loading, setLoading] = useState(true);
-
+  const [submitError, setSubmitError] = useState<string>("");
   const [sortConfig, setSortConfig] = useState<{
     key: keyof User;
     direction: "asc" | "desc";
@@ -61,6 +60,8 @@ const UserManagementPage = () => {
 
   // 新規ユーザー登録
   const handleAddUser = async () => {
+    setSubmitError("");
+
     try {
       if (user?.role === UserRole.SYSTEM_ADMIN) {
         //システム管理者ログイン時、同じ会社アカウントがあるかを確認
@@ -95,7 +96,18 @@ const UserManagementPage = () => {
       alert("ユーザーを登録しました");
     } catch (error) {
       console.error(error);
-      alert("ユーザーの登録に失敗しました");
+
+      let message: string;
+
+      if (error instanceof Error) {
+        message = error.message.includes("(406)")
+          ? "メールアドレスは既に存在します"
+          : `${error.message}`;
+      } else {
+        message = "⚠️ エラー: 不明なエラーが発生しました";
+      }
+
+      setSubmitError(message);
     } finally {
       setLoading(false);
     }
@@ -168,25 +180,6 @@ const UserManagementPage = () => {
     setIsFormOpen(true);
   };
 
-  // ユーザー情報削除
-  const handleDelete = async () => {
-    if (!editingUser) return;
-
-    try {
-      setLoading(true);
-      //ユーザー情報削除API
-      deleteUser(formUser);
-      resetForm();
-      alert("ユーザーを削除しました");
-    } catch (error) {
-      console.error(error);
-      alert("ユーザーの削除に失敗しました");
-    } finally {
-      setLoading(false);
-      redirect("/home");
-    }
-  };
-
   // ソート
   const filteredUsers = users.filter(
     (u) => u.name.includes(search) || u.email.includes(search)
@@ -257,8 +250,8 @@ const UserManagementPage = () => {
             setIsFormOpen(false);
           }}
           onSubmit={editingUser ? handleUpdateUser : handleAddUser}
-          handleDelete={handleDelete}
           loading={loading}
+          submitError={submitError}
         />
       ) : (
         <>
@@ -353,7 +346,7 @@ const UserManagementPage = () => {
                           : u.companyName}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
-                        {u.role}
+                        {UserRoleLabel[u.role as UserRole]}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
                         {u.createdAt}

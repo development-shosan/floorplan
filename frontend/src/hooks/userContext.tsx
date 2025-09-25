@@ -1,5 +1,6 @@
 "use client";
 
+import { UserRole } from "@/constants/roles";
 import { getTokenPayload } from "@/lib/api";
 import React, {
   createContext,
@@ -13,7 +14,7 @@ export interface LoginResponse {
   id: number;
   name: string;
   token: string;
-  role: "MEMBER" | "COMPANY_ADMIN" | "SYSTEM_ADMIN";
+  role?: "MEMBER" | "COMPANY_ADMIN" | "SYSTEM_ADMIN";
   companyId?: number;
 }
 
@@ -47,6 +48,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const setUser = (userData: LoginResponse | null) => {
     if (userData) {
       const payload = getTokenPayload(userData.token);
+
+      if (
+        !payload ||
+        !payload.role ||
+        !Object.values(UserRole).includes(payload.role as UserRole)
+      ) {
+        throw new Error("ログイン情報が無効になりました。");
+      }
+
+      if (payload.role === "COMPANY_ADMIN" && !payload.companyId) {
+        throw new Error("ログイン情報が無効になりました。");
+      }
+
       if (payload) {
         userData.role = payload.role;
         userData.companyId = payload.companyId;

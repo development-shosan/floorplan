@@ -65,9 +65,6 @@ const LoginForm: React.FC = () => {
       // ログインAPI
       const data: LoginResponse = await loginUser(email, password);
       setUser(data);
-
-      // ログイン成功したらHOME画面に遷移
-      router.push("/home");
     } catch (err: unknown) {
       console.error(err);
 
@@ -75,7 +72,7 @@ const LoginForm: React.FC = () => {
 
       if (err instanceof Error) {
         message = err.message.includes("(401)")
-          ? "⚠️ エラー: メールアドレスまたはパスワードが正しくありません (401)"
+          ? "メールアドレスまたはパスワードが正しくありません"
           : `${err.message}`;
       } else {
         message = "⚠️ エラー: 不明なエラーが発生しました";

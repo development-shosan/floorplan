@@ -89,9 +89,8 @@ async function fetchApi(path: string, options: RequestInit = {}) {
     if (payload) {
       user.role = payload.role;
       user.companyId = payload.companyId;
+      sessionStorage.setItem("user", JSON.stringify(user));
     }
-
-    sessionStorage.setItem("user", JSON.stringify(user));
     (headers as Record<string, string>)["Authorization"] = `${newToken}`;
   }
 
@@ -132,16 +131,8 @@ export const getUserList = () => {
 
 // ユーザー情報登録
 export const createUser = (formUser: UserFormData) => {
-  const {
-    name,
-    companyId,
-    email,
-    password,
-    role,
-    department,
-    phoneNumber,
-    status,
-  } = formUser;
+  const { name, companyId, email, password, role, department, phoneNumber } =
+    formUser;
 
   return fetchApi("/api/v1/member", {
     method: "POST",
@@ -153,7 +144,6 @@ export const createUser = (formUser: UserFormData) => {
       role,
       department,
       phoneNumber,
-      status,
     }),
   });
 };
@@ -211,7 +201,6 @@ export const createCompany = (formCompany: CompanyFormData) => {
     prefecture,
     city,
     streetAddress,
-    status,
   } = formCompany;
 
   return fetchApi("/api/v1/company", {
@@ -225,7 +214,6 @@ export const createCompany = (formCompany: CompanyFormData) => {
       prefecture,
       city,
       streetAddress,
-      status,
     }),
   });
 };
