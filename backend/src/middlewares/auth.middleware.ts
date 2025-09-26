@@ -1,7 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt, { VerifyErrors } from "jsonwebtoken";
+import jwt, { VerifyErrors } from 'jsonwebtoken';
 import { env } from '../../env';
-import type { StringValue } from 'ms';
+import { createAuthToken } from '../commonUtils';
+import { AuthTokenPayload } from '../types/LoginParam';
+
+declare global {
+    namespace Express {
+        interface Request {
+            user?: AuthTokenPayload;
+        }
+    }
+}
 
 // これはJWTを検証し、ユーザーの役割に基づいてアクセスを制御するミドルウェアの例です。
 // 実際のプロジェクトでは、jsonwebtokenライブラリなどを使用します。
@@ -44,14 +53,33 @@ export const refreshTokenIfValid = (req: Request, res: Response, next:NextFuncti
         return
     }
 
-    jwt.verify(token, env.TOKEN_SECRET, (err: VerifyErrors | null) => {
-        if (err) {
+    jwt.verify(token, env.TOKEN_SECRET, (err: VerifyErrors | null, decoded: any) => {
+        if (err || !decoded) {
             res.status(403).send('Invalid or expired token');
             return
         }
 
-        const newToken = jwt.sign({}, env.TOKEN_SECRET, { expiresIn: env.TOKEN_EXPIRES as StringValue });
+        req.user = decoded as AuthTokenPayload;
+        const newToken = createAuthToken(decoded);
         res.setHeader('Authorization', newToken);
-        return next();
+        next();
     });
 }
+
+
+export const authorizeRoles = (...allowedRoles: string[]) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const user: AuthTokenPayload | undefined = req.user;
+
+        if (!user) {
+            res.status(403).send('No payload found in token');
+            return
+        }
+
+        if (!allowedRoles.includes(user.role)) {
+            res.status(403).send('Access denied: insufficient permissions');
+            return
+        }
+    next();
+    };
+};
