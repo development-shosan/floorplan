@@ -158,13 +158,13 @@ export default class DSMgr {
                                     companyId: number,
                                     passwords: ChangePasswordInput): Promise<void> {
         try {
-            const userPassword:string | null =
+            const userHashedPassword:string | null =
                 await this.dbMgr.getUserPasswordByUserId(userId, companyId);
-            if (!userPassword) {
+            if (!userHashedPassword) {
                 throw new UserModificationError('Password could not be found.');
             }
 
-            const isMatch: boolean = await bcrypt.compare(userPassword, passwords.currentPassword);
+            const isMatch: boolean = await bcrypt.compare(passwords.currentPassword, userHashedPassword);
             if (!isMatch) {
                 throw new UserModificationError('The current password is incorrect.');
             }
