@@ -371,7 +371,10 @@ const UserForm: React.FC<UserFormProps> = ({
                     <input
                       type="password"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setFormUser({ ...formUser, password: e.target.value });
+                      }}
                       className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
                     {errors.password && (
