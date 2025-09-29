@@ -10,14 +10,11 @@ COPY package*.json ./
 # 4. 依存関係のインストール
 RUN npm install --production=false && npm install ts-node-dev @types/express @types/node
 
-# 5. Prismaスキーマのコピー
-COPY prisma ./
+# 5. ソースコードのコピー
+COPY . .
 
 # 6. Prismaクライアントの生成
 RUN npx prisma generate
-
-# 7. ソースコードのコピー
-COPY . .
 
 # 8. Expressサーバーが使用するポートを公開
 EXPOSE 4000

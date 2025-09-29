@@ -4,8 +4,7 @@
 import prisma from '../prisma/client';
 import {CreateUserDataInput, UpdateUserDataInput, UserInfo, UserInfoOutput} from './types/UserParam';
 import {AuthTokenPayload, UserByEmail} from './types/LoginParam';
-import { Prisma } from "@prisma/client";
-import { Role } from "@prisma/client";
+import { Prisma, Role } from "../generated/prisma";
 
 export default class DBMgr {
     /**
@@ -72,7 +71,7 @@ export default class DBMgr {
             }
         });
 
-        return users.map((user) => ({
+        return users.map((user: any) => ({
             ...user,
             companyName: user.company?.name ?? null,
             company: undefined,

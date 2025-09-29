@@ -11,7 +11,7 @@ import {
 import bcrypt from 'bcrypt';
 import {UserModificationError, LoginError} from './ApplicationErrors';
 import { AppConstant } from './SpecificCommons';
-import {Prisma, Role} from "@prisma/client";
+import {Prisma, Role} from "../generated/prisma";
 import {createAuthToken} from "./commonUtils";
 
 export default class DSMgr {

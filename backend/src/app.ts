@@ -12,7 +12,7 @@ import {refreshTokenIfValid, authorizeRoles} from "./middlewares/auth.middleware
 import {validatorErrorChecker} from './middlewares/validator.middleware';
 import {AuthTokenPayload} from './types/LoginParam';
 import {env} from '../env';
-import { Role } from "@prisma/client";
+import { Role } from "../generated/prisma";
 
 
 const app = express();
