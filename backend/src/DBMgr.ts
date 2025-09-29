@@ -15,7 +15,7 @@ export default class DBMgr {
      * @returns {UserByEmail | null} The user info if found, otherwise null
      */
     public async getUserByEmail(email: string): Promise<UserByEmail | null> {
-        return prisma.user.findUnique({
+        return prisma.user.findFirst({
             select: {
                 id: true,
                 name: true,

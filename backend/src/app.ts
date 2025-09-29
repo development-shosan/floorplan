@@ -186,7 +186,7 @@ router.put('/member/:id', [
 /**
  * Changes the user's password.
  * Request param:
- *          curl -i -X patch -H "Content-Type: application/json" -H "Authorization: TOKEN"
+ *          curl -i -X PATCH -H "Content-Type: application/json" -H "Authorization: TOKEN"
  *          -d "{\"currentPassword\":\"1234\", \"newPassword\":\"12345\" }" http://localhost:4000/api/v1/member/32
  *
  */
