@@ -47,7 +47,8 @@ const CompanyManagementPage = () => {
   const fetchCompanies = async () => {
     try {
       setLoading(true);
-      const data: Company[] = await getCompanyList();
+      const response = await getCompanyList();
+      const data: Company[] = response.companies;
       setCompanies(data);
     } catch (error) {
       console.error("会社一覧の取得に失敗しました:", error);

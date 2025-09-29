@@ -58,6 +58,10 @@ const Header: React.FC<HeaderProps> = ({
       label: "ユーザー管理",
       roles: [UserRole.SYSTEM_ADMIN, UserRole.COMPANY_ADMIN],
     },
+    {
+      label: "お問い合わせ",
+      roles: [UserRole.COMPANY_ADMIN],
+    },
   ];
 
   if (loading) return <p>{"ロード中..."}</p>;
@@ -69,7 +73,11 @@ const Header: React.FC<HeaderProps> = ({
   return (
     <header
       className={`flex items-center justify-between ${
-        currentRole === UserRole.SYSTEM_ADMIN ? "bg-[#ec6361]" : "bg-black"
+        currentRole === UserRole.SYSTEM_ADMIN
+          ? "bg-[#ec6361]"
+          : currentRole === UserRole.COMPANY_ADMIN
+          ? "bg-[#5e5cd8]"
+          : "bg-black"
       } text-white px-6 py-3 relative`}
     >
       <div className="flex items-center space-x-4">

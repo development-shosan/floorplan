@@ -45,7 +45,8 @@ const UserManagementPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const data: User[] = await getUserList();
+      const response = await getUserList();
+      const data: User[] = response.members;
       setUsers(data);
     } catch (error) {
       console.error("ユーザー一覧の取得に失敗しました:", error);

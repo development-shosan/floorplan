@@ -7,6 +7,7 @@ import Header from "./components/HeaderForm";
 import { useRouter } from "next/navigation";
 import CompanyManagementPage from "./components/CompanyManagementPage";
 import UserManagementPage from "./components/UserManagementPage";
+import ContactPage from "./components/ContactPage";
 
 const Home: React.FC = () => {
   const { user, loading, logout } = useUser();
@@ -28,6 +29,7 @@ const Home: React.FC = () => {
     対応履歴: <HistoryPage />,
     会社管理: <CompanyManagementPage />,
     ユーザー管理: <UserManagementPage />,
+    お問い合わせ: <ContactPage />,
   };
 
   return (
