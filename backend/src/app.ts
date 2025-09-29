@@ -2,17 +2,22 @@
    src/app.ts
 */
 import express from 'express';
-import dotenv from 'dotenv';
+import type { Request, Response, NextFunction } from 'express';
 import DSMgr from './DSMgr';
-import { LoginError } from './ApplicationErrors';
+import {UserModificationError, LoginError} from './ApplicationErrors';
 import morgan from 'morgan';
 import cors from 'cors';
-import { refreshTokenIfValid } from "./middlewares/auth.middleware";
-dotenv.config(); // .env ファイルを読み込む
+import { body, param } from 'express-validator';
+import {refreshTokenIfValid, authorizeRoles} from "./middlewares/auth.middleware";
+import {validatorErrorChecker} from './middlewares/validator.middleware';
+import {AuthTokenPayload} from './types/LoginParam';
+import {env} from '../env';
+import { Role } from "@prisma/client";
+
 
 const app = express();
 const router = express.Router();
-const PORT = process.env.PORT || 4000;
+const PORT = env.WEB_SERVER_PORT;
 const dsMgr = new DSMgr();
 
 // cross-origin resource sharing
@@ -44,18 +49,133 @@ app.get('/', (req, res) => {
  *
  *      Response: Object<LoginResult>
  */
-router.post('/login', async (req, res, next) => {
+router.post('/login',
+    body('email').trim().notEmpty().isEmail().normalizeEmail(),
+    body('password').notEmpty().isString(),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+
+            const result = await dsMgr.login(req.body.email, req.body.password);
+            res.json(result);
+
+        } catch (err) {
+            if (err instanceof LoginError) {
+                res.sendStatus(401);
+            } else {
+                res.sendStatus(500);
+            }
+            return next(err);
+        }
+});
+
+/**
+ *  Retrieves a list of users.
+ *      Request param:
+ *          curl -i -X GET -H "Authorization: TOKEN" http://localhost:4000/api/v1/members
+ *
+ *      Response: Object<UserInfoOutput>
+ */
+router.get('/members',
+    refreshTokenIfValid,
+    authorizeRoles(Role.SYSTEM_ADMIN, Role.COMPANY_ADMIN),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+
+            const authPayload: AuthTokenPayload | undefined = req.user
+            if(!authPayload){
+                res.status(403).send('No payload found in token');
+                return
+            }
+
+            const result = await dsMgr.getUsers(authPayload);
+            res.json(result);
+
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+});
+
+/**
+ *  Creates a new user.
+ *      Request param:
+ *          curl -i -X POST -H "Content-Type: application/json" -H "Authorization: TOKEN"
+ *          -d "{\"name\":\"渡辺\", \"companyId\":2, \"email\":\"user2@example.com\",
+ *          \"password\":\"1234\", \"role\":\"MEMBER\", \"department\":\"営業\",
+ *          \"phoneNumber\":\"090-1111-2222\"}" http://localhost:4000/api/v1/member
+ *
+ *
+ */
+router.post('/member', [
+    body('name').trim().notEmpty().isString(),
+    body('companyId').notEmpty().toInt().isInt({ min: 1 }),
+    body('email').trim().notEmpty().isEmail().normalizeEmail(),
+    body('password').notEmpty().isString(),
+    body('role').trim().notEmpty().isString(),
+    body('department').trim().notEmpty().isString(),
+    body('phoneNumber').notEmpty().isString()
+    ],
+    refreshTokenIfValid,
+    authorizeRoles(Role.SYSTEM_ADMIN, Role.COMPANY_ADMIN),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+
+            const authPayload: AuthTokenPayload | undefined = req.user
+            if(!authPayload){
+                res.sendStatus(403);
+                return
+            }
+
+            await dsMgr.createUser(req.body, authPayload);
+            res.sendStatus(200);
+
+        } catch (err) {
+            if (err instanceof UserModificationError) {
+                res.sendStatus(406);
+            } else {
+                res.sendStatus(500);
+            }
+            return next(err);
+        }
+});
+
+/**
+ *  Updates user data.
+ *      Request param:
+ *          curl -i -X PUT -H "Content-Type: application/json" -H "Authorization: TOKEN"
+ *          -d "{\"name\":\"渡辺\", \"role\":\"MEMBER\", \"department\":\"営業\",
+ *          \"phoneNumber\":\"090-1111-2222\", \"status\":true}" http://localhost:4000/api/v1/member/32
+ *
+ *
+ */
+router.put('/member/:id', [
+    param('id').exists().isNumeric(),
+    body('name').trim().notEmpty().isString(),
+    body('role').trim().notEmpty().isString(),
+    body('department').trim().notEmpty().isString(),
+    body('phoneNumber').trim().notEmpty().isString(),
+    body('status').notEmpty().isBoolean()
+    ],
+    refreshTokenIfValid,
+    authorizeRoles(Role.SYSTEM_ADMIN, Role.COMPANY_ADMIN),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
     try {
-        if (!req.body.email || !req.body.password) {
-            res.sendStatus(400);
+
+        const authPayload: AuthTokenPayload | undefined = req.user
+        if(!authPayload){
+            res.sendStatus(403);
             return
         }
-        const result = await dsMgr.login(req.body.email, req.body.password);
-        res.json(result);
+        const userId = Number(req.params.id);
+        await dsMgr.updateUser(userId, authPayload, req.body);
+        res.sendStatus(200);
 
     } catch (err) {
-        if (err instanceof LoginError) {
-            res.sendStatus(401);
+        if (err instanceof UserModificationError) {
+            res.sendStatus(406);
         } else {
             res.sendStatus(500);
         }
@@ -63,15 +183,42 @@ router.post('/login', async (req, res, next) => {
     }
 });
 
-// TODO: Test only – to be removed
 /**
- *      Request param:
- *          curl -i -X GET -H "Content-Type: application/json"
- *               -H "Authorization: TOKEN" http://localhost:4000/api/v1/tokenTest
+ * Changes the user's password.
+ * Request param:
+ *          curl -i -X PATCH -H "Content-Type: application/json" -H "Authorization: TOKEN"
+ *          -d "{\"currentPassword\":\"1234\", \"newPassword\":\"12345\" }" http://localhost:4000/api/v1/password/32
  *
  */
-router.get('/tokenTest', refreshTokenIfValid, (req, res) => {
-    res.status(200).send('Token successfully verified and reissued.');
+router.patch('/password/:id', [
+    param('id').exists().isNumeric(),
+    body('currentPassword').notEmpty().isString(),
+    body('newPassword').notEmpty().isString(),
+    ],
+    refreshTokenIfValid,
+    authorizeRoles(Role.COMPANY_ADMIN),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+    try {
+
+        const authPayload: AuthTokenPayload | undefined = req.user
+        if(!authPayload){
+            res.sendStatus(403);
+            return
+        }
+
+        const userId = Number(req.params.id)
+        await dsMgr.changeUserPassword(userId, authPayload.companyId, req.body);
+        res.sendStatus(200);
+
+    } catch (err) {
+        if (err instanceof UserModificationError) {
+            res.sendStatus(406);
+        } else {
+            res.sendStatus(500);
+        }
+        return next(err);
+    }
 });
 
 app.listen(PORT, () => {
