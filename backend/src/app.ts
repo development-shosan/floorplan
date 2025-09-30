@@ -199,7 +199,7 @@ router.patch(
         body('newPassword').notEmpty().isString()
     ],
     refreshTokenIfValid,
-    authorizeRoles(Role.COMPANY_ADMIN),
+    authorizeRoles(Role.SYSTEM_ADMIN, Role.COMPANY_ADMIN),
     validatorErrorChecker,
     async (req: Request, res: Response, next: NextFunction) => {
         try {
@@ -209,9 +209,10 @@ router.patch(
                 return;
             }
 
-            const userId = Number(req.params.id);
-            await dsMgr.changeUserPassword(userId, authPayload.companyId, req.body);
+            const userId = Number(req.params.id)
+            await dsMgr.changeUserPassword(userId, authPayload, req.body);
             res.sendStatus(200);
+
         } catch (err) {
             if (err instanceof UserModificationError) {
                 res.sendStatus(406);
@@ -222,6 +223,7 @@ router.patch(
         }
     }
 );
+
 
 /**
  *  Retrieves a list of companies.
