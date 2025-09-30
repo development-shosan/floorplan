@@ -49,7 +49,7 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
     try {
       setLoading(true);
       //ユーザーパスワード変更API
-      changePassword(id, newPassword);
+      await changePassword(id, newPassword);
 
       alert("パスワードを変更しました。");
       setNewPassword("");

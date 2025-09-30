@@ -92,7 +92,9 @@ const UserManagementPage = () => {
       };
 
       //ユーザー情報登録API
-      createUser(newUser);
+      await createUser(newUser);
+      //ユーザー一覧取得
+      await fetchUsers();
       resetForm();
       alert("ユーザーを登録しました");
     } catch (error) {
@@ -138,7 +140,9 @@ const UserManagementPage = () => {
       };
 
       //ユーザー情報登録API
-      updateUser(updatedUser);
+      await updateUser(updatedUser);
+      //ユーザー一覧取得
+      await fetchUsers();
       resetForm();
       alert("ユーザーを編集しました");
     } catch (error) {

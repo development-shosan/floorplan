@@ -87,8 +87,10 @@ const CompanyManagementPage = () => {
         streetAddress: formCompany.streetAddress,
         status: true,
       };
-      //ユーザー情報登録API
-      createCompany(newCompany);
+      // 会社情報登録API
+      await createCompany(newCompany);
+      // 会社一覧取得
+      await fetchCompanies();
       resetForm();
       alert("会社を登録しました");
     } catch (error) {
@@ -129,8 +131,10 @@ const CompanyManagementPage = () => {
         streetAddress: formCompany.streetAddress,
         status: formCompany.status,
       };
-
-      updateCompany(updatedCompany);
+      // 会社情報編集API
+      await updateCompany(updatedCompany);
+      // 会社一覧取得
+      await fetchCompanies();
       resetForm();
       alert("会社を編集しました");
     } catch (error) {
@@ -181,13 +185,15 @@ const CompanyManagementPage = () => {
 
     try {
       setLoading(true);
-      //ユーザー情報削除API
-      deleteCompany(formCompany);
+      // 会社情報削除API
+      await deleteCompany(formCompany);
+      // 会社一覧取得
+      await fetchCompanies();
       resetForm();
-      alert("ユーザーを削除しました");
+      alert("会社を削除しました");
     } catch (error) {
       console.error(error);
-      alert("ユーザーの削除に失敗しました");
+      alert("会社の削除に失敗しました");
     } finally {
       setLoading(false);
       redirect("/home");
