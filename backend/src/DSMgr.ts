@@ -90,16 +90,7 @@ export default class DSMgr {
                             authPayload: AuthTokenPayload): Promise<void> {
         try {
 
-            const isSystemAdminCreatingCompanyAdmin =
-                Role.SYSTEM_ADMIN === authPayload.role && Role.COMPANY_ADMIN === createData.role
-
-            const isCompanyAdminCreatingMember =
-                Role.COMPANY_ADMIN === authPayload.role && Role.MEMBER === createData.role
-
-            if (!isSystemAdminCreatingCompanyAdmin && !isCompanyAdminCreatingMember) {
-                throw new UserModificationError(
-                    'The role does not have permission for the target action.');
-            }
+            this.validateRolePermission(authPayload.role, createData.role)
 
             const hashedPassword = await bcrypt.hash(
                     createData.password, AppConstant.BCRYPT.SALT_ROUNDS);
@@ -151,20 +142,30 @@ export default class DSMgr {
      * Changes the user's password.
      *
      * @param userId - The ID of the user whose password will be changed
-     * @param companyId - The ID of the company the user belongs to
+     * @param authPayload - The authorization token payload of the requester
      * @param passwords - An object containing the current and new passwords.
      */
     public async changeUserPassword(userId: number,
-                                    companyId: number,
+                                    authPayload: AuthTokenPayload,
                                     passwords: ChangePasswordInput): Promise<void> {
         try {
-            const userHashedPassword:string | null =
-                await this.dbMgr.getUserPasswordByUserId(userId, companyId);
-            if (!userHashedPassword) {
+            const targetUser = await this.dbMgr.getUserByUserId(userId);
+            if (!targetUser) {
+                throw new UserModificationError('User could not be found.');
+            }
+            if (!targetUser.password) {
                 throw new UserModificationError('Password could not be found.');
             }
 
-            const isMatch: boolean = await bcrypt.compare(passwords.currentPassword, userHashedPassword);
+            this.validateRolePermission(authPayload.role, targetUser.role);
+
+            if (Role.COMPANY_ADMIN === authPayload.role){
+                if (targetUser.companyId !== authPayload.companyId) {
+                    throw new UserModificationError('Not from the same company.');
+                }
+            }
+
+            const isMatch: boolean = await bcrypt.compare(passwords.currentPassword, targetUser.password);
             if (!isMatch) {
                 throw new UserModificationError('The current password is incorrect.');
             }
@@ -178,6 +179,26 @@ export default class DSMgr {
                 console.error('changePassword failed', err);
             }
             throw err;
+        }
+    }
+
+    /**
+     * Permission validation function.
+     *
+     * @param authRole - The authenticated administrator role (authPayload.role)
+     * @param targetRole - The role of the target user being modified
+     */
+    validateRolePermission(authRole: Role, targetRole: Role): void {
+        const isSystemAdminCreatingCompanyAdmin =
+            Role.SYSTEM_ADMIN === authRole && Role.COMPANY_ADMIN === targetRole;
+
+        const isCompanyAdminCreatingMember =
+            Role.COMPANY_ADMIN === authRole && Role.MEMBER === targetRole;
+
+        if (!isSystemAdminCreatingCompanyAdmin && !isCompanyAdminCreatingMember) {
+            throw new UserModificationError(
+                'The role does not have permission for the target action.'
+            );
         }
     }
 }

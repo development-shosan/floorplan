@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { Role } from '@prisma/client';
 
 export type UserInfo = {
     id: number;
@@ -35,3 +35,7 @@ export type ChangePasswordInput = {
 export type UpdateUserDataInput = Pick<CreateUserDataInput, 'name' | 'role' | 'department' | 'phoneNumber' > & {
     status: boolean;
 }
+
+export type UserByUserId = Pick<UserInfo, 'role' | 'companyId'> & {
+    password: string | null;
+};
