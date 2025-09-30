@@ -14,21 +14,15 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
-  const [submitError, setSubmitError] = useState<string>("");
 
   if (!isOpen) return null;
 
   const validatePassword = () => {
     const newErrors: { [key: string]: string } = {};
-
-    if (!currentPassword) {
-      newErrors.currentPassword = "パスワードを入力してください。";
-    }
 
     if (!newPassword) {
       newErrors.newPassword = "パスワードを入力してください。";
@@ -52,32 +46,18 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
   const handleSubmit = async () => {
     if (!validatePassword()) return;
     if (loading) return;
-    setSubmitError("");
     try {
       setLoading(true);
       //ユーザーパスワード変更API
-      changePassword(id, currentPassword, newPassword);
+      changePassword(id, newPassword);
 
       alert("パスワードを変更しました。");
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setErrors({});
       onClose();
     } catch (err) {
       console.error(err);
-
-      let message: string;
-
-      if (err instanceof Error) {
-        message = err.message.includes("(406)")
-          ? "パスワードが正しくありません"
-          : `${err.message}`;
-      } else {
-        message = "⚠️ エラー: 不明なエラーが発生しました";
-      }
-
-      setSubmitError(message);
     } finally {
       setLoading(false);
     }
@@ -89,24 +69,6 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
         <h2 className="text-xl font-medium mb-4">パスワード変更</h2>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              現在のパスワード
-            </label>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              disabled={loading}
-            />
-            {errors.currentPassword && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.currentPassword}
-              </p>
-            )}
-          </div>
-
           <div>
             <label className="block text-sm font-medium mb-1">
               新しいパスワード
@@ -141,20 +103,10 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
             )}
           </div>
 
-          {/* エラー表示 */}
-          {submitError && (
-            <div className="mt-8 p-4 bg-[#FDF9F2] border-l-4 border-[#E5933C] rounded-md">
-              <p className="flex items-center text-[#B07020] text-[15px]">
-                {submitError}
-              </p>
-            </div>
-          )}
-
           <div className="flex justify-end gap-2 mt-4">
             <button
               type="button"
               onClick={() => {
-                setCurrentPassword("");
                 setNewPassword("");
                 setConfirmPassword("");
                 setErrors({});
