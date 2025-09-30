@@ -50,8 +50,21 @@ const UserForm: React.FC<UserFormProps> = ({
     }
   }, [user?.role, editingUser]);
 
-  // システム管理者が一般ユーザーを編集する時
-  const isReadOnly = user?.role === UserRole.SYSTEM_ADMIN && !!editingUser;
+  // 権限別編集可能
+  const isReadOnly = Boolean(
+    (user?.role === UserRole.SYSTEM_ADMIN &&
+      editingUser?.role === UserRole.COMPANY_ADMIN) ||
+      (user?.role === UserRole.SYSTEM_ADMIN &&
+        editingUser?.role === UserRole.MEMBER) ||
+      (user?.role === UserRole.COMPANY_ADMIN &&
+        editingUser?.role !== UserRole.MEMBER)
+  );
+
+  // 暗証番号変更制御
+  const canChangePassword =
+    (user?.role === UserRole.SYSTEM_ADMIN &&
+      editingUser?.role === UserRole.COMPANY_ADMIN) ||
+    !isReadOnly;
 
   // バリデーションチェック
   const validate = () => {
@@ -195,46 +208,40 @@ const UserForm: React.FC<UserFormProps> = ({
             </div>
           )}
 
-          {editingUser && (
-            <>
-              {user?.role === UserRole.SYSTEM_ADMIN && (
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      権限
-                    </label>
-                    <select
-                      value={formUser.role}
-                      onChange={(e) =>
-                        !isReadOnly &&
-                        setFormUser({
-                          ...formUser,
-                          role: e.target.value as
-                            | UserRole.MEMBER
-                            | UserRole.COMPANY_ADMIN,
-                        })
-                      }
-                      disabled={isReadOnly}
-                      className={`w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                        isReadOnly ? "bg-gray-100" : ""
-                      }`}
-                    >
-                      {Object.values(UserRole)
-                        .filter(
-                          (role) =>
-                            role === UserRole.MEMBER ||
-                            role === UserRole.COMPANY_ADMIN
-                        )
-                        .map((role) => (
-                          <option key={role} value={role}>
-                            {UserRoleLabel[role]}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-            </>
+          {editingUser && user?.role === UserRole.SYSTEM_ADMIN && (
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">権限</label>
+                <select
+                  value={formUser.role}
+                  onChange={(e) =>
+                    !isReadOnly &&
+                    setFormUser({
+                      ...formUser,
+                      role: e.target.value as
+                        | UserRole.MEMBER
+                        | UserRole.COMPANY_ADMIN,
+                    })
+                  }
+                  disabled={isReadOnly}
+                  className={`w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                    isReadOnly ? "bg-gray-100" : ""
+                  }`}
+                >
+                  {Object.values(UserRole)
+                    .filter(
+                      (role) =>
+                        role === UserRole.MEMBER ||
+                        role === UserRole.COMPANY_ADMIN
+                    )
+                    .map((role) => (
+                      <option key={role} value={role}>
+                        {UserRoleLabel[role]}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
           )}
 
           <div className="grid grid-cols-1 gap-4">
@@ -338,17 +345,17 @@ const UserForm: React.FC<UserFormProps> = ({
                 )}
               </div>
 
-              {editingUser && (
+              {editingUser && canChangePassword && (
                 <div className="mt-4 md:mt-0">
                   <button
                     type="button"
-                    onClick={() => !isReadOnly && setIsPasswordModalOpen(true)}
+                    onClick={() => setIsPasswordModalOpen(true)}
                     className={`px-5 py-2 rounded ${
-                      isReadOnly
-                        ? "bg-gray-300 text-gray-500"
-                        : "bg-gray-800 text-white hover:bg-gray-700"
+                      canChangePassword
+                        ? "bg-gray-800 text-white hover:bg-gray-700"
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
                     }`}
-                    disabled={isReadOnly}
+                    disabled={!canChangePassword}
                   >
                     パスワード変更
                   </button>
