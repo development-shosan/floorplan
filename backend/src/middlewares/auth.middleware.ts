@@ -59,8 +59,10 @@ export const refreshTokenIfValid = (req: Request, res: Response, next:NextFuncti
             return
         }
 
-        req.user = decoded as AuthTokenPayload;
-        const newToken = createAuthToken(decoded);
+        const { exp, iat, ...payload } = decoded;
+        req.user = payload as AuthTokenPayload;
+
+        const newToken = createAuthToken(payload);
         res.setHeader('Authorization', newToken);
         next();
     });
