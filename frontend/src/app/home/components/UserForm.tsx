@@ -52,18 +52,20 @@ const UserForm: React.FC<UserFormProps> = ({
 
   // 権限別編集可能
   const isReadOnly = Boolean(
-    (user?.role === UserRole.SYSTEM_ADMIN &&
-      editingUser?.role === UserRole.COMPANY_ADMIN) ||
-      (user?.role === UserRole.SYSTEM_ADMIN &&
-        editingUser?.role === UserRole.MEMBER) ||
-      (user?.role === UserRole.COMPANY_ADMIN &&
-        editingUser?.role !== UserRole.MEMBER)
+    editingUser &&
+      ((user?.role === UserRole.SYSTEM_ADMIN &&
+        editingUser.role === UserRole.COMPANY_ADMIN) ||
+        (user?.role === UserRole.SYSTEM_ADMIN &&
+          editingUser.role === UserRole.MEMBER) ||
+        (user?.role === UserRole.COMPANY_ADMIN &&
+          editingUser.role !== UserRole.MEMBER))
   );
 
   // 暗証番号変更制御
   const canChangePassword =
+    !editingUser ||
     (user?.role === UserRole.SYSTEM_ADMIN &&
-      editingUser?.role === UserRole.COMPANY_ADMIN) ||
+      editingUser.role === UserRole.COMPANY_ADMIN) ||
     !isReadOnly;
 
   // バリデーションチェック
