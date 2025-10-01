@@ -109,33 +109,32 @@ export default class DSMgr {
         }
     }
 
-    /**
-     * Updates user data.
-     *
-     * @param userId - The ID of the user to update
-     * @param authPayload - The authorization token payload of the requester
-     * @param updateData - The new data to apply to the user
-     */
-    public async updateUser(userId: number,
-                            authPayload: AuthTokenPayload,
-                            updateData: UpdateUserDataInput): Promise<void> {
-        try {
-
-            if (Role.COMPANY_ADMIN === authPayload.role){
-                const userCompanyId: number | null =
-                    await this.dbMgr.getUserCompanyIdByUserId(userId);
-                if (userCompanyId !== authPayload.companyId) {
-                    throw new UserModificationError('Not from the same company.');
-                }
-            }
-            await this.dbMgr.updateUser(userId, updateData);
-
-        } catch (err) {
-            if (err instanceof UserModificationError) {
-                console.error('update user failed', err);
-            }
-            throw err;
+  /**
+   * Updates user data.
+   *
+   * @param userId - The ID of the user to update
+   * @param authPayload - The authorization token payload of the requester
+   * @param updateData - The new data to apply to the user
+   */
+  public async updateUser(
+    userId: number,
+    authPayload: AuthTokenPayload,
+    updateData: UpdateUserDataInput,
+  ): Promise<void> {
+    try {
+      if (Role.COMPANY_ADMIN === authPayload.role) {
+        const userCompanyId: number | null =
+          await this.dbMgr.getUserCompanyIdByUserId(userId);
+        if (userCompanyId !== authPayload.companyId) {
+          throw new UserModificationError("Not from the same company.");
         }
+      }
+      await this.dbMgr.updateUser(userId, updateData);
+    } catch (err) {
+      if (err instanceof UserModificationError) {
+        console.error("update user failed", err);
+      }
+      throw err;
     }
   }
 
