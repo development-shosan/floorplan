@@ -33,7 +33,7 @@ export default class DSMgr {
      * @returns Object<LoginResult>
      */
     public async login(email: string, password: string): Promise<LoginResult> {
-        this.logger.info(`login('${email}')`);
+        this.logger.debug(`login('${email}')`);
 
         try {
             const user: UserByEmail | null = await this.dbMgr.getUserByEmail(email);
@@ -75,7 +75,7 @@ export default class DSMgr {
      * @returns Object<UserInfoOutput>
      */
     public async getUsers(authPayload: AuthTokenPayload): Promise<UserInfoOutput> {
-        this.logger.info(`getUsers(${JSON.stringify(authPayload)})`);
+        this.logger.debug(`getUsers(${JSON.stringify(authPayload)})`);
 
         try {
             const userInfos = await this.dbMgr.getUsers(authPayload);
@@ -100,7 +100,7 @@ export default class DSMgr {
         createData: CreateUserDataInput,
         authPayload: AuthTokenPayload
     ): Promise<void> {
-        this.logger.info(`createUser(${JSON.stringify(authPayload)})`);
+        this.logger.debug(`createUser(${JSON.stringify(authPayload)})`);
 
         try {
             const isSystemAdminCreatingCompanyAdmin =
@@ -152,7 +152,7 @@ export default class DSMgr {
         authPayload: AuthTokenPayload,
         updateData: UpdateUserDataInput
     ): Promise<void> {
-        this.logger.info(`updateUser(${userId}, ${JSON.stringify(authPayload)}, 
+        this.logger.debug(`updateUser(${userId}, ${JSON.stringify(authPayload)}, 
                             ${JSON.stringify(updateData)})`);
 
         try {
@@ -186,7 +186,7 @@ export default class DSMgr {
         companyId: number,
         passwords: ChangePasswordInput
     ): Promise<void> {
-        this.logger.info(`changeUserPassword(${userId}, ${companyId})`);
+        this.logger.debug(`changeUserPassword(${userId}, ${companyId})`);
 
         try {
             const userHashedPassword: string | null = await this.dbMgr.getUserPasswordByUserId(
