@@ -4,7 +4,7 @@
 */
 
 export const AppConstant = {
-    BCRYPT : {
+    BCRYPT: {
         SALT_ROUNDS: 10
     }
-}
+};

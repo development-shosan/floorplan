@@ -1,15 +1,15 @@
-import { Role } from "@prisma/client";
+import { Role } from '@prisma/client';
 
 export type UserByEmail = {
     id: number;
     name: string | null;
     password: string | null;
-    role: Role,
+    role: Role;
     companyId: number;
-}
+};
 
 export type LoginResult = Pick<UserByEmail, 'id' | 'name'> & {
     token: string;
-}
+};
 
 export type AuthTokenPayload = Pick<UserByEmail, 'role' | 'companyId'>;
