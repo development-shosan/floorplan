@@ -132,26 +132,25 @@ export default class DBMgr {
         });
     }
 
-    /**
-     * Retrieves a user by their unique user ID.
-     *
-     * @param userId - The ID of the user
-     * @returns A promise that resolves to the user's role, companyId, and password if found, otherwise null
-     */
-    public async getUserByUserId(userId: number): Promise<UserByUserId | null> {
-        this.logger.debug(`getUserByUserId(${userId}})`);
+  /**
+   * Retrieves a user by their unique user ID.
+   *
+   * @param userId - The ID of the user
+   * @returns A promise that resolves to the user's role, companyId, otherwise null
+   */
+  public async getUserByUserId(userId: number): Promise<UserByUserId | null> {
+      this.logger.debug(`getUserByUserId(${userId}})`);
 
-        return prisma.user.findUnique({
-            select: {
-                role: true,
-                companyId: true,
-                password: true
-            },
-            where: {
-                id: userId
-            }
-        });
-    }
+      return prisma.user.findUnique({
+        select: {
+          role: true,
+          companyId: true
+        },
+        where: {
+          id: userId
+        }
+      });
+  }
 
     /**
      * Retrieves the company ID associated with a given user ID.
