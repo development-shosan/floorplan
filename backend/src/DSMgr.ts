@@ -2,23 +2,27 @@
    src/DSMgr.ts
 */
 import DBMgr from './DBMgr';
-import {AuthTokenPayload, LoginResult, UserByEmail} from './types/LoginParam';
+import { AuthTokenPayload, LoginResult, UserByEmail } from './types/LoginParam';
 import {
     ChangePasswordInput,
     CreateUserDataInput,
-    UpdateUserDataInput, UserInfoOutput
+    UpdateUserDataInput,
+    UserInfoOutput
 } from './types/UserParam';
 import bcrypt from 'bcrypt';
-import {UserModificationError, LoginError} from './ApplicationErrors';
+import { UserModificationError, LoginError } from './ApplicationErrors';
 import { AppConstant } from './SpecificCommons';
-import {Prisma, Role} from "../generated/prisma";
-import {createAuthToken} from "./commonUtils";
+import { Prisma, Role } from '@prisma/client';
+import { createAuthToken } from './commonUtils';
+import { createLogger } from './logger';
 
 export default class DSMgr {
     private dbMgr: DBMgr;
+    private logger;
 
     constructor() {
         this.dbMgr = new DBMgr();
+        this.logger = createLogger('DSMgr');
     }
 
     /**
@@ -28,7 +32,9 @@ export default class DSMgr {
      * @param password - user password
      * @returns Object<LoginResult>
      */
-    public async login( email: string, password: string ): Promise<LoginResult> {
+    public async login(email: string, password: string): Promise<LoginResult> {
+        this.logger.info(`login('${email}')`);
+
         try {
             const user: UserByEmail | null = await this.dbMgr.getUserByEmail(email);
             if (!user) {
@@ -54,12 +60,13 @@ export default class DSMgr {
             };
         } catch (err) {
             if (err instanceof LoginError) {
-                console.error('Login failed', err);
+                this.logger.warn(`Login failed: ${err.message}`);
+            } else {
+                this.logger.error('login() Unexpected error', err);
             }
             throw err;
         }
     }
-
 
     /**
      * Retrieves a list of users.
@@ -68,14 +75,17 @@ export default class DSMgr {
      * @returns Object<UserInfoOutput>
      */
     public async getUsers(authPayload: AuthTokenPayload): Promise<UserInfoOutput> {
+        this.logger.info(`getUsers(${JSON.stringify(authPayload)})`);
+
         try {
             const userInfos = await this.dbMgr.getUsers(authPayload);
-            if(!userInfos?.length) return { members: [] }
+            if (!userInfos?.length) return { members: [] };
 
             return {
                 members: userInfos
-            }
+            };
         } catch (err) {
+            this.logger.error('getUsers() Unexpected error', err);
             throw err;
         }
     }
@@ -86,33 +96,45 @@ export default class DSMgr {
      * @param createData - The user data to create the user with
      * @param authPayload - The authorization token payload of the requester
      */
-    public async createUser(createData: CreateUserDataInput,
-                            authPayload: AuthTokenPayload): Promise<void> {
-        try {
+    public async createUser(
+        createData: CreateUserDataInput,
+        authPayload: AuthTokenPayload
+    ): Promise<void> {
+        this.logger.info(`createUser(${JSON.stringify(authPayload)})`);
 
+        try {
             const isSystemAdminCreatingCompanyAdmin =
-                Role.SYSTEM_ADMIN === authPayload.role && Role.COMPANY_ADMIN === createData.role
+                Role.SYSTEM_ADMIN === authPayload.role && Role.COMPANY_ADMIN === createData.role;
 
             const isCompanyAdminCreatingMember =
-                Role.COMPANY_ADMIN === authPayload.role && Role.MEMBER === createData.role
+                Role.COMPANY_ADMIN === authPayload.role && Role.MEMBER === createData.role;
 
             if (!isSystemAdminCreatingCompanyAdmin && !isCompanyAdminCreatingMember) {
                 throw new UserModificationError(
-                    'The role does not have permission for the target action.');
+                    'The role does not have permission for the target action.'
+                );
             }
 
             const hashedPassword = await bcrypt.hash(
-                    createData.password, AppConstant.BCRYPT.SALT_ROUNDS);
-            const createDataHashedPassword: CreateUserDataInput =
-                    { ...createData, password: hashedPassword };
+                createData.password,
+                AppConstant.BCRYPT.SALT_ROUNDS
+            );
+            const createDataHashedPassword: CreateUserDataInput = {
+                ...createData,
+                password: hashedPassword
+            };
             await this.dbMgr.createUser(createDataHashedPassword);
-
         } catch (err) {
             if (err instanceof Prisma.PrismaClientKnownRequestError) {
                 if (err.code === 'P2002') {
+                    this.logger.warn(`Create user failed: ${err.message}`);
+
                     throw new UserModificationError(
-                    `Duplicate value detected in unique field(s): ${err.meta?.target}`);
+                        `Duplicate value detected in unique field(s): ${err.meta?.target}`
+                    );
                 }
+            } else {
+                this.logger.error('createUser() Unexpected error', err);
             }
             throw err;
         }
@@ -125,12 +147,16 @@ export default class DSMgr {
      * @param authPayload - The authorization token payload of the requester
      * @param updateData - The new data to apply to the user
      */
-    public async updateUser(userId: number,
-                            authPayload: AuthTokenPayload,
-                            updateData: UpdateUserDataInput): Promise<void> {
-        try {
+    public async updateUser(
+        userId: number,
+        authPayload: AuthTokenPayload,
+        updateData: UpdateUserDataInput
+    ): Promise<void> {
+        this.logger.info(`updateUser(${userId}, ${JSON.stringify(authPayload)}, 
+                            ${JSON.stringify(updateData)})`);
 
-            if (Role.COMPANY_ADMIN === authPayload.role){
+        try {
+            if (Role.COMPANY_ADMIN === authPayload.role) {
                 const userCompanyId: number | null =
                     await this.dbMgr.getUserCompanyIdByUserId(userId);
                 if (userCompanyId !== authPayload.companyId) {
@@ -138,10 +164,11 @@ export default class DSMgr {
                 }
             }
             await this.dbMgr.updateUser(userId, updateData);
-
         } catch (err) {
             if (err instanceof UserModificationError) {
-                console.error('update user failed', err);
+                this.logger.warn(`Update user failed: ${err.message}`);
+            } else {
+                this.logger.error('updateUser() Unexpected error', err);
             }
             throw err;
         }
@@ -154,28 +181,40 @@ export default class DSMgr {
      * @param companyId - The ID of the company the user belongs to
      * @param passwords - An object containing the current and new passwords.
      */
-    public async changeUserPassword(userId: number,
-                                    companyId: number,
-                                    passwords: ChangePasswordInput): Promise<void> {
+    public async changeUserPassword(
+        userId: number,
+        companyId: number,
+        passwords: ChangePasswordInput
+    ): Promise<void> {
+        this.logger.info(`changeUserPassword(${userId}, ${companyId})`);
+
         try {
-            const userHashedPassword:string | null =
-                await this.dbMgr.getUserPasswordByUserId(userId, companyId);
+            const userHashedPassword: string | null = await this.dbMgr.getUserPasswordByUserId(
+                userId,
+                companyId
+            );
             if (!userHashedPassword) {
                 throw new UserModificationError('Password could not be found.');
             }
 
-            const isMatch: boolean = await bcrypt.compare(passwords.currentPassword, userHashedPassword);
+            const isMatch: boolean = await bcrypt.compare(
+                passwords.currentPassword,
+                userHashedPassword
+            );
             if (!isMatch) {
                 throw new UserModificationError('The current password is incorrect.');
             }
 
-            const hashedNewPassword: string =
-                await bcrypt.hash(passwords.newPassword, AppConstant.BCRYPT.SALT_ROUNDS);
+            const hashedNewPassword: string = await bcrypt.hash(
+                passwords.newPassword,
+                AppConstant.BCRYPT.SALT_ROUNDS
+            );
             await this.dbMgr.changeUserPassword(userId, hashedNewPassword);
-
         } catch (err) {
             if (err instanceof UserModificationError) {
-                console.error('changePassword failed', err);
+                this.logger.warn(`Change password failed: ${err.message}`);
+            } else {
+                this.logger.error('changeUserPassword() Unexpected error', err);
             }
             throw err;
         }
