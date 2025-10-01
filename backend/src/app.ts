@@ -187,39 +187,36 @@ router.put('/member/:id', [
  * Changes the user's password.
  * Request param:
  *          curl -i -X PATCH -H "Content-Type: application/json" -H "Authorization: TOKEN"
- *          -d "{\"currentPassword\":\"1234\", \"newPassword\":\"12345\" }" http://localhost:4000/api/v1/password/32
+ *          -d "{\"newPassword\":\"12345\"}" http://localhost:4000/api/v1/password/32
  *
  */
-router.patch('/password/:id', [
-    param('id').exists().isNumeric(),
-    body('currentPassword').notEmpty().isString(),
-    body('newPassword').notEmpty().isString(),
-    ],
-    refreshTokenIfValid,
-    authorizeRoles(Role.SYSTEM_ADMIN, Role.COMPANY_ADMIN),
-    validatorErrorChecker,
-    async (req: Request, res: Response, next: NextFunction) => {
+router.patch(
+  "/password/:id",
+  [param("id").exists().isNumeric(), body("newPassword").notEmpty().isString()],
+  refreshTokenIfValid,
+  authorizeRoles(Role.SYSTEM_ADMIN, Role.COMPANY_ADMIN),
+  validatorErrorChecker,
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const authPayload: AuthTokenPayload | undefined = req.user;
+      if (!authPayload) {
+        res.sendStatus(403);
+        return;
+      }
 
-        const authPayload: AuthTokenPayload | undefined = req.user
-        if(!authPayload){
-            res.sendStatus(403);
-            return
-        }
-
-        const userId = Number(req.params.id)
-        await dsMgr.changeUserPassword(userId, authPayload, req.body);
-        res.sendStatus(200);
-
+      const userId = Number(req.params.id);
+      await dsMgr.changeUserPassword(userId, authPayload, req.body.newPassword);
+      res.sendStatus(200);
     } catch (err) {
-        if (err instanceof UserModificationError) {
-            res.sendStatus(406);
-        } else {
-            res.sendStatus(500);
-        }
-        return next(err);
+      if (err instanceof UserModificationError) {
+        res.sendStatus(406);
+      } else {
+        res.sendStatus(500);
+      }
+      return next(err);
     }
-});
+  },
+);
 
 app.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);

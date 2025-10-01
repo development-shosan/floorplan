@@ -36,6 +36,4 @@ export type UpdateUserDataInput = Pick<CreateUserDataInput, 'name' | 'role' | 'd
     status: boolean;
 }
 
-export type UserByUserId = Pick<UserInfo, 'role' | 'companyId'> & {
-    password: string | null;
-};
+export type UserByUserId = Pick<UserInfo, "role" | "companyId"> & {};
