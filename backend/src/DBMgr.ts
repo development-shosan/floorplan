@@ -6,6 +6,7 @@ import { CreateUserDataInput, UpdateUserDataInput, UserInfo } from './types/User
 import { AuthTokenPayload, UserByEmail } from './types/LoginParam';
 import { Prisma, Role } from '@prisma/client';
 import { createLogger } from './logger';
+import { CompanyInfo, CreateCompanyDataInput, UpdateCompanyDataInput } from './types/CompanyParam';
 
 export default class DBMgr {
     private logger;
@@ -167,5 +168,104 @@ export default class DBMgr {
             where: { id: userId }
         });
         return result?.companyId ?? null;
+    }
+
+    /**
+     * Retrieves a list of companies.
+     *
+     * @returns A list of companies, or null if no companies are found
+     */
+    public async getCompanies(): Promise<CompanyInfo[] | null> {
+        this.logger.debug('getCompanies()');
+
+        const companies = await prisma.company.findMany({
+            select: {
+                id: true,
+                name: true,
+                nameKana: true,
+                representative: true,
+                email: true,
+                status: true,
+                postalCode: true,
+                prefecture: true,
+                city: true,
+                streetAddress: true,
+                createdAt: true,
+                createdById: true,
+                updatedAt: true,
+                updatedById: true,
+                _count: {
+                    select: {
+                        members: {
+                            where: { deleted: false }
+                        }
+                    }
+                }
+            },
+            where: {
+                deleted: false
+            },
+            orderBy: {
+                id: 'asc'
+            }
+        });
+
+        return companies.map((company: any) => ({
+            ...company,
+            members: company._count.members,
+            _count: undefined
+        }));
+    }
+
+    /**
+     * Creates a new company.
+     *
+     * @param createData - The company data to create the company with
+     */
+    public async createCompany(createData: CreateCompanyDataInput): Promise<void> {
+        this.logger.debug(`createCompany(${JSON.stringify(createData)})`);
+
+        await prisma.company.create({
+            data: { ...createData }
+        });
+    }
+
+    /**
+     * Updates company data by company ID.
+     *
+     * @param companyId - The ID of the company to update
+     * @param updateData - The new data to apply to the company
+     */
+    public async updateCompany(
+        companyId: number,
+        updateData: UpdateCompanyDataInput
+    ): Promise<void> {
+        this.logger.debug(`updateCompany(${companyId}, ${JSON.stringify(updateData)})`);
+
+        await prisma.company.update({
+            where: { id: companyId },
+            data: { ...updateData }
+        });
+    }
+
+    /**
+     * Remove a company and all users associated with it.
+     *
+     * @param companyId - The ID of the company to update
+     */
+    public async removeCompanyWithUsers(companyId: number): Promise<void> {
+        this.logger.debug(`removeCompanyWithUsers(${companyId})`);
+
+        await prisma.$transaction(async (tx) => {
+            await tx.company.update({
+                where: { id: companyId },
+                data: { deleted: true }
+            });
+
+            await tx.user.updateMany({
+                where: { companyId },
+                data: { deleted: true }
+            });
+        });
     }
 }
