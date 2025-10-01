@@ -15,6 +15,11 @@ import { AppConstant } from './SpecificCommons';
 import { Prisma, Role } from '@prisma/client';
 import { createAuthToken } from './commonUtils';
 import { createLogger } from './logger';
+import {
+    CompanyInfoOutput,
+    CreateCompanyDataInput,
+    UpdateCompanyDataInput
+} from './types/CompanyParam';
 
 export default class DSMgr {
     private dbMgr: DBMgr;
@@ -79,10 +84,8 @@ export default class DSMgr {
 
         try {
             const userInfos = await this.dbMgr.getUsers(authPayload);
-            if (!userInfos?.length) return { members: [] };
-
             return {
-                members: userInfos
+                members: userInfos ?? []
             };
         } catch (err) {
             this.logger.error('getUsers() Unexpected error', err);
@@ -216,6 +219,77 @@ export default class DSMgr {
             } else {
                 this.logger.error('changeUserPassword() Unexpected error', err);
             }
+            throw err;
+        }
+    }
+
+    /**
+     * Retrieves a list of companies.
+     *
+     * @returns A list of companies, or null if no companies are found
+     */
+    public async getCompanies(): Promise<CompanyInfoOutput> {
+        this.logger.debug('getCompanies()');
+
+        try {
+            const companyInfos = await this.dbMgr.getCompanies();
+            return {
+                companies: companyInfos ?? []
+            };
+        } catch (err) {
+            this.logger.error('getCompanies() Unexpected error', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Creates a new company.
+     *
+     * @param createData - The company data to create the company with
+     */
+    public async createCompany(createData: CreateCompanyDataInput): Promise<void> {
+        this.logger.debug(`createCompany(${JSON.stringify(createData)})`);
+
+        try {
+            await this.dbMgr.createCompany(createData);
+        } catch (err) {
+            this.logger.error('createCompany() Unexpected error', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Updates company data.
+     *
+     * @param companyId - The ID of the company to update
+     * @param updateData - The new data to apply to the company
+     */
+    public async updateCompany(
+        companyId: number,
+        updateData: UpdateCompanyDataInput
+    ): Promise<void> {
+        this.logger.debug(`updateCompany(${companyId}, ${JSON.stringify(updateData)})`);
+
+        try {
+            await this.dbMgr.updateCompany(companyId, updateData);
+        } catch (err) {
+            this.logger.error('updateCompany() Unexpected error', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Remove a company and all users associated with it.
+     *
+     * @param companyId - The ID of the company to remove
+     */
+    public async removeCompanyWithUsers(companyId: number): Promise<void> {
+        this.logger.debug(`removeCompanyWithUsers(${companyId})`);
+
+        try {
+            await this.dbMgr.removeCompanyWithUsers(companyId);
+        } catch (err) {
+            this.logger.error('removeCompanyWithUsers() Unexpected error', err);
             throw err;
         }
     }

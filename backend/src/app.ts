@@ -106,7 +106,6 @@ router.get(
  *          \"password\":\"1234\", \"role\":\"MEMBER\", \"department\":\"営業\",
  *          \"phoneNumber\":\"090-1111-2222\"}" http://localhost:4000/api/v1/member
  *
- *
  */
 router.post(
     '/member',
@@ -149,7 +148,6 @@ router.post(
  *          curl -i -X PUT -H "Content-Type: application/json" -H "Authorization: TOKEN"
  *          -d "{\"name\":\"渡辺\", \"role\":\"MEMBER\", \"department\":\"営業\",
  *          \"phoneNumber\":\"090-1111-2222\", \"status\":true}" http://localhost:4000/api/v1/member/32
- *
  *
  */
 router.put(
@@ -213,6 +211,131 @@ router.patch(
 
             const userId = Number(req.params.id);
             await dsMgr.changeUserPassword(userId, authPayload.companyId, req.body);
+            res.sendStatus(200);
+        } catch (err) {
+            if (err instanceof UserModificationError) {
+                res.sendStatus(406);
+            } else {
+                res.sendStatus(500);
+            }
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Retrieves a list of companies.
+ *      Request param:
+ *          curl -i -X GET -H "Authorization: TOKEN" http://localhost:4000/api/v1/companies
+ *
+ *      Response: A list of companies, or null if no companies are found
+ */
+router.get(
+    '/companies',
+    refreshTokenIfValid,
+    authorizeRoles(Role.SYSTEM_ADMIN),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const result = await dsMgr.getCompanies();
+            res.json(result);
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Creates a new company.
+ *      Request param:
+ *          curl -i -X POST -H "Content-Type: application/json" -H "Authorization: TOKEN"
+ *          -d "{\"name\":\"micro\", \"nameKana\":\"マイクロ\", \"representative\":\"織田信長\",
+ *          \"email\":\"info@micro.com\", \"postalCode\":\"158-1155\", \"prefecture\":\"東京都\",
+ *          \"city\":\"目黒区\",  \"streetAddress\":\"目黒1－2－5\"}"
+ *          http://localhost:4000/api/v1/company
+ *
+ */
+router.post(
+    '/company',
+    [
+        body('name').trim().notEmpty().isString(),
+        body('nameKana').trim().notEmpty().isString(),
+        body('representative').trim().notEmpty().isString(),
+        body('email').trim().notEmpty().isEmail().normalizeEmail(),
+        body('postalCode').trim().notEmpty().isString(),
+        body('prefecture').trim().notEmpty().isString(),
+        body('city').trim().notEmpty().isString(),
+        body('streetAddress').trim().notEmpty().isString()
+    ],
+    refreshTokenIfValid,
+    authorizeRoles(Role.SYSTEM_ADMIN),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            await dsMgr.createCompany(req.body);
+            res.sendStatus(200);
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Updates company data.
+ *      Request param:
+ *          curl -i -X PUT -H "Content-Type: application/json" -H "Authorization: TOKEN"
+ *          -d "{\"name\":\"micro\", \"nameKana\":\"マイクロ\", \"representative\":\"織田信長\",
+ *          \"email\":\"info@micro.com\", \"postalCode\":\"158-1155\", \"prefecture\":\"東京都\",
+ *          \"city\":\"目黒区\",  \"streetAddress\":\"目黒1－2－5\", \"status\":false}"
+ *          http://localhost:4000/api/v1/company/5
+ *
+ */
+router.put(
+    '/company/:id',
+    [
+        param('id').exists().isNumeric(),
+        body('name').trim().notEmpty().isString(),
+        body('nameKana').trim().notEmpty().isString(),
+        body('representative').trim().notEmpty().isString(),
+        body('email').trim().notEmpty().isEmail().normalizeEmail(),
+        body('postalCode').trim().notEmpty().isString(),
+        body('prefecture').trim().notEmpty().isString(),
+        body('city').trim().notEmpty().isString(),
+        body('streetAddress').trim().notEmpty().isString(),
+        body('status').notEmpty().isBoolean()
+    ],
+    refreshTokenIfValid,
+    authorizeRoles(Role.SYSTEM_ADMIN),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const companyId = Number(req.params.id);
+            await dsMgr.updateCompany(companyId, req.body);
+            res.sendStatus(200);
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+    }
+);
+
+/**
+ * Remove a company and all users associated with it.
+ *     Request param:
+ *          curl -i -X PATCH -H "Authorization: TOKEN" http://localhost:4000/api/v1/company/5
+ *
+ */
+router.patch(
+    '/company/:id',
+    [param('id').exists().isNumeric()],
+    refreshTokenIfValid,
+    authorizeRoles(Role.COMPANY_ADMIN),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const companyId = Number(req.params.id);
+            await dsMgr.removeCompanyWithUsers(companyId);
             res.sendStatus(200);
         } catch (err) {
             if (err instanceof UserModificationError) {
