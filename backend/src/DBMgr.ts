@@ -20,7 +20,7 @@ export default class DBMgr {
      * @returns {UserByEmail | null} The user info if found, otherwise null
      */
     public async getUserByEmail(email: string): Promise<UserByEmail | null> {
-        this.logger.info(`getUserByEmail('${email}')`);
+        this.logger.debug(`getUserByEmail('${email}')`);
 
         return prisma.user.findFirst({
             select: {
@@ -45,7 +45,7 @@ export default class DBMgr {
      * @returns {UserInfo[] | null} - A list of users, or null if no users are found
      */
     public async getUsers(authPayload: AuthTokenPayload): Promise<UserInfo[] | null> {
-        this.logger.info(`getUsers(${JSON.stringify(authPayload)})`);
+        this.logger.debug(`getUsers(${JSON.stringify(authPayload)})`);
 
         const where: Prisma.UserWhereInput = {};
         if (Role.SYSTEM_ADMIN === authPayload.role) {
@@ -93,7 +93,7 @@ export default class DBMgr {
      * @param createData - The user data to create the user with
      */
     public async createUser(createData: CreateUserDataInput): Promise<void> {
-        this.logger.info('createUser()');
+        this.logger.debug('createUser()');
 
         await prisma.user.create({
             data: { ...createData }
@@ -107,7 +107,7 @@ export default class DBMgr {
      * @param updateData - The new data to apply to the user
      */
     public async updateUser(userId: number, updateData: UpdateUserDataInput): Promise<void> {
-        this.logger.info(`updateUser(${userId}, ${JSON.stringify(updateData)})`);
+        this.logger.debug(`updateUser(${userId}, ${JSON.stringify(updateData)})`);
 
         await prisma.user.update({
             where: { id: userId },
@@ -122,7 +122,7 @@ export default class DBMgr {
      * @param newPassword - The new hashed password to set for the user
      */
     public async changeUserPassword(userId: number, newPassword: string): Promise<void> {
-        this.logger.info(`changeUserPassword(${userId}, '${newPassword}')`);
+        this.logger.debug(`changeUserPassword(${userId}, '${newPassword}')`);
 
         await prisma.user.update({
             where: { id: userId },
@@ -141,7 +141,7 @@ export default class DBMgr {
         userId: number,
         companyId: number
     ): Promise<string | null> {
-        this.logger.info(`getUserPasswordByUserId(${userId}, ${companyId})`);
+        this.logger.debug(`getUserPasswordByUserId(${userId}, ${companyId})`);
 
         const result = await prisma.user.findFirst({
             select: { password: true },
@@ -160,7 +160,7 @@ export default class DBMgr {
      * @returns The company ID if found, otherwise null
      */
     public async getUserCompanyIdByUserId(userId: number): Promise<number | null> {
-        this.logger.info(`getUserCompanyIdByUserId(${userId})`);
+        this.logger.debug(`getUserCompanyIdByUserId(${userId})`);
 
         const result = await prisma.user.findUnique({
             select: { companyId: true },
