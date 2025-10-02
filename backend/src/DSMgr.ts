@@ -3,12 +3,7 @@
 */
 import DBMgr from './DBMgr';
 import { AuthTokenPayload, LoginResult, UserByEmail } from './types/LoginParam';
-import {
-    ChangePasswordInput,
-    CreateUserDataInput,
-    UpdateUserDataInput,
-    UserInfoOutput
-} from './types/UserParam';
+import { CreateUserDataInput, UpdateUserDataInput, UserInfoOutput } from './types/UserParam';
 import bcrypt from 'bcrypt';
 import { UserModificationError, LoginError } from './ApplicationErrors';
 import { AppConstant } from './SpecificCommons';
@@ -106,8 +101,7 @@ export default class DSMgr {
         this.logger.debug(`createUser(${JSON.stringify(authPayload)})`);
 
         try {
-
-            this.validateRolePermission(authPayload.role, createData.role)
+            this.validateRolePermission(authPayload.role, createData.role);
 
             const hashedPassword = await bcrypt.hash(
                 createData.password,
@@ -168,47 +162,49 @@ export default class DSMgr {
         }
     }
 
-  /**
-   * Changes the user's password.
-   *
-   * @param userId - The ID of the user whose password will be changed
-   * @param authPayload - The authorization token payload of the requester
-   * @param newPassword - An object containing the new passwords.
-   */
-  public async changeUserPassword(
-    userId: number,
-    authPayload: AuthTokenPayload,
-    newPassword: string,
-  ): Promise<void> {
-      this.logger.debug(`changeUserPassword(${userId}, ${JSON.stringify(authPayload)}, '${newPassword}')`);
-      try {
-          const targetUser = await this.dbMgr.getUserByUserId(userId);
-          if (!targetUser) {
-              throw new UserModificationError('User could not be found.');
-          }
+    /**
+     * Changes the user's password.
+     *
+     * @param userId - The ID of the user whose password will be changed
+     * @param authPayload - The authorization token payload of the requester
+     * @param newPassword - An object containing the new passwords.
+     */
+    public async changeUserPassword(
+        userId: number,
+        authPayload: AuthTokenPayload,
+        newPassword: string
+    ): Promise<void> {
+        this.logger.debug(
+            `changeUserPassword(${userId}, ${JSON.stringify(authPayload)}, '${newPassword}')`
+        );
+        try {
+            const targetUser = await this.dbMgr.getUserByUserId(userId);
+            if (!targetUser) {
+                throw new UserModificationError('User could not be found.');
+            }
 
-          this.validateRolePermission(authPayload.role, targetUser.role);
+            this.validateRolePermission(authPayload.role, targetUser.role);
 
-          if (Role.COMPANY_ADMIN === authPayload.role) {
-              if (targetUser.companyId !== authPayload.companyId) {
-                  throw new UserModificationError('Not from the same company.');
-              }
-          }
+            if (Role.COMPANY_ADMIN === authPayload.role) {
+                if (targetUser.companyId !== authPayload.companyId) {
+                    throw new UserModificationError('Not from the same company.');
+                }
+            }
 
-          const hashedNewPassword: string = await bcrypt.hash(
-              newPassword,
-              AppConstant.BCRYPT.SALT_ROUNDS
-          );
-          await this.dbMgr.changeUserPassword(userId, hashedNewPassword);
-      } catch (err) {
-          if (err instanceof UserModificationError) {
-              this.logger.warn(`Change password failed: ${err.message}`);
-          } else {
-              this.logger.error('changeUserPassword() Unexpected error', err);
-          }
-          throw err;
-      }
-  }
+            const hashedNewPassword: string = await bcrypt.hash(
+                newPassword,
+                AppConstant.BCRYPT.SALT_ROUNDS
+            );
+            await this.dbMgr.changeUserPassword(userId, hashedNewPassword);
+        } catch (err) {
+            if (err instanceof UserModificationError) {
+                this.logger.warn(`Change password failed: ${err.message}`);
+            } else {
+                this.logger.error('changeUserPassword() Unexpected error', err);
+            }
+            throw err;
+        }
+    }
 
     /**
      * Retrieves a list of companies.
@@ -281,23 +277,23 @@ export default class DSMgr {
         }
     }
 
-  /**
-   * Permission validation function.
-   *
-   * @param authRole - The authenticated administrator role (authPayload.role)
-   * @param targetRole - The role of the target user being modified
-   */
-  validateRolePermission(authRole: Role, targetRole: Role): void {
-    const isSystemAdminCreatingCompanyAdmin =
-      Role.SYSTEM_ADMIN === authRole && Role.COMPANY_ADMIN === targetRole;
+    /**
+     * Permission validation function.
+     *
+     * @param authRole - The authenticated administrator role (authPayload.role)
+     * @param targetRole - The role of the target user being modified
+     */
+    validateRolePermission(authRole: Role, targetRole: Role): void {
+        const isSystemAdminCreatingCompanyAdmin =
+            Role.SYSTEM_ADMIN === authRole && Role.COMPANY_ADMIN === targetRole;
 
-    const isCompanyAdminCreatingMember =
-      Role.COMPANY_ADMIN === authRole && Role.MEMBER === targetRole;
+        const isCompanyAdminCreatingMember =
+            Role.COMPANY_ADMIN === authRole && Role.MEMBER === targetRole;
 
-    if (!isSystemAdminCreatingCompanyAdmin && !isCompanyAdminCreatingMember) {
-      throw new UserModificationError(
-        "The role does not have permission for the target action.",
-      );
+        if (!isSystemAdminCreatingCompanyAdmin && !isCompanyAdminCreatingMember) {
+            throw new UserModificationError(
+                'The role does not have permission for the target action.'
+            );
+        }
     }
-  }
 }
