@@ -51,13 +51,14 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
       //ユーザーパスワード変更API
       await changePassword(id, newPassword);
 
-      alert("パスワードを変更しました。");
+      alert("パスワードを変更しました");
       setNewPassword("");
       setConfirmPassword("");
       setErrors({});
       onClose();
     } catch (err) {
       console.error(err);
+      alert("パスワードの変更に失敗しました");
     } finally {
       setLoading(false);
     }

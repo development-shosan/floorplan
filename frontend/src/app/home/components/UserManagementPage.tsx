@@ -49,7 +49,8 @@ const UserManagementPage = () => {
       const data: User[] = response.members;
       setUsers(data);
     } catch (error) {
-      console.error("ユーザー一覧の取得に失敗しました:", error);
+      console.error(error);
+      alert("ユーザー一覧の取得に失敗しました");
     } finally {
       setLoading(false);
     }
@@ -109,7 +110,7 @@ const UserManagementPage = () => {
       } else {
         message = "⚠️ エラー: 不明なエラーが発生しました";
       }
-
+      alert("ユーザーの登録に失敗しました");
       setSubmitError(message);
     } finally {
       setLoading(false);
