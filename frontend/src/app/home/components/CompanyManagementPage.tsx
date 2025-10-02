@@ -121,6 +121,7 @@ const CompanyManagementPage = () => {
       setLoading(true);
 
       const updatedCompany: CompanyFormData = {
+        id: formCompany.id,
         name: formCompany.name,
         nameKana: formCompany.nameKana,
         representative: formCompany.representative,

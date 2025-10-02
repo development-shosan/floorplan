@@ -35,20 +35,21 @@ const UserForm: React.FC<UserFormProps> = ({
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
+  const fetchCompanies = async () => {
+    try {
+      const response = await getCompanyList();
+      const data: Company[] = response.companies;
+      setCompanies(data);
+    } catch (error) {
+      console.error("会社一覧の取得に失敗しました:", error);
+    }
+  };
+
   useEffect(() => {
     if (user?.role === UserRole.SYSTEM_ADMIN && !editingUser) {
-      const fetchCompanies = async () => {
-        try {
-          const data: Company[] = await getCompanyList();
-          setCompanies(data);
-        } catch (error) {
-          console.error("会社一覧の取得に失敗しました:", error);
-        }
-      };
-
       fetchCompanies();
     }
-  }, [user?.role, editingUser]);
+  }, [user?.role, editingUser, companies]);
 
   // 権限別編集可能
   const isReadOnly = Boolean(
