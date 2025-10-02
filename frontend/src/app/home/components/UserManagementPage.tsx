@@ -49,7 +49,8 @@ const UserManagementPage = () => {
       const data: User[] = response.members;
       setUsers(data);
     } catch (error) {
-      console.error("ユーザー一覧の取得に失敗しました:", error);
+      console.error(error);
+      alert("ユーザー一覧の取得に失敗しました");
     } finally {
       setLoading(false);
     }
@@ -92,7 +93,9 @@ const UserManagementPage = () => {
       };
 
       //ユーザー情報登録API
-      createUser(newUser);
+      await createUser(newUser);
+      //ユーザー一覧取得
+      await fetchUsers();
       resetForm();
       alert("ユーザーを登録しました");
     } catch (error) {
@@ -107,7 +110,7 @@ const UserManagementPage = () => {
       } else {
         message = "⚠️ エラー: 不明なエラーが発生しました";
       }
-
+      alert("ユーザーの登録に失敗しました");
       setSubmitError(message);
     } finally {
       setLoading(false);
@@ -138,7 +141,9 @@ const UserManagementPage = () => {
       };
 
       //ユーザー情報登録API
-      updateUser(updatedUser);
+      await updateUser(updatedUser);
+      //ユーザー一覧取得
+      await fetchUsers();
       resetForm();
       alert("ユーザーを編集しました");
     } catch (error) {

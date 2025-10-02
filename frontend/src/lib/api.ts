@@ -171,15 +171,10 @@ export const deleteUser = (formUser: UserFormData) => {
 };
 
 // ユーザーパスワード変更
-export const changePassword = (
-  id: number,
-  currentPassword: string,
-  newPassword: string
-) => {
+export const changePassword = (id: number, newPassword: string) => {
   return fetchApi(`/api/v1/password/${id}`, {
     method: "PATCH",
     body: JSON.stringify({
-      currentPassword,
       newPassword,
     }),
   });

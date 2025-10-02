@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 4. 依存関係のインストール
-RUN npm install --production=false && npm install ts-node-dev @types/express @types/node
+RUN npm ci
 
 # 5. ソースコードのコピー
 COPY . .
