@@ -38,3 +38,5 @@ export type UpdateUserDataInput = Pick<
 > & {
     status: boolean;
 };
+
+export type UserByUserId = Pick<UserInfo, "role" | "companyId"> & {};
