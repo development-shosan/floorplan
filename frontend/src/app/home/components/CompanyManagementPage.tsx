@@ -357,7 +357,16 @@ const CompanyManagementPage = () => {
                         {company.members}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
-                        {company.createdAt}
+                        {company.createdAt
+                          ? new Date(company.createdAt).toLocaleDateString(
+                              "ja-JP",
+                              {
+                                year: "numeric",
+                                month: "2-digit",
+                                day: "2-digit",
+                              }
+                            )
+                          : "-"}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2 flex justify-center gap-2">
                         <button
