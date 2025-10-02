@@ -188,7 +188,7 @@ router.put(
  * Changes the user's password.
  * Request param:
  *          curl -i -X PATCH -H "Content-Type: application/json" -H "Authorization: TOKEN"
- *          -d "{\"newPassword\":\"12345\"}" http://localhost:4000/api/v1/password/32
+ *         -d "{\"newPassword\":\"12345\"}" http://localhost:4000/api/v1/password/32
  *
  */
 router.patch(
@@ -201,8 +201,8 @@ router.patch(
         try {
             const authPayload: AuthTokenPayload | undefined = req.user;
             if (!authPayload) {
-              res.sendStatus(403);
-              return;
+                res.sendStatus(403);
+                return;
             }
 
             const userId = Number(req.params.id);
