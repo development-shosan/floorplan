@@ -8,8 +8,12 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/16/solid";
 import { dummyHistories, History } from "@/constants/history";
+import { useUser } from "@/hooks/userContext";
+import { UserRole } from "@/constants/roles";
 
 const HistoryPage: React.FC = () => {
+  const { user } = useUser();
+
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -18,7 +22,7 @@ const HistoryPage: React.FC = () => {
   const [endDateInput, setEndDateInput] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [tab, setTab] = useState<"all" | "favorite">("all");
-  const itemsPerPage = 6;
+  const itemsPerPage = 10;
 
   const [sortConfig, setSortConfig] = useState<{
     key: keyof History;
@@ -89,7 +93,10 @@ const HistoryPage: React.FC = () => {
   return (
     <div>
       <div className="flex gap-4 mb-6">
-        {["all", "favorite"].map((item) => {
+        {(user?.role === UserRole.COMPANY_ADMIN
+          ? ["all", "favorite"]
+          : ["all"]
+        ).map((item) => {
           const label = item === "all" ? "すべて" : "お気に入り";
           const isActive = tab === item;
 
@@ -140,7 +147,7 @@ const HistoryPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-45vh)] mt-4">
+      <div className="overflow-x-auto overflow-y-auto h-[calc(100vh-25vh)] mt-4">
         <table className="min-w-full text-center border-collapse">
           <thead className="bg-gray-100">
             <tr>
@@ -148,9 +155,18 @@ const HistoryPage: React.FC = () => {
                 { label: "ID", key: "id" },
                 { label: "タイトル", key: "title" },
                 { label: "生成日時", key: "createdAt" },
-                { label: "顧客名", key: "customerName" },
+                {
+                  label:
+                    user?.role === UserRole.SYSTEM_ADMIN ? "会社名" : "顧客名",
+                  key:
+                    user?.role === UserRole.SYSTEM_ADMIN
+                      ? "companyName"
+                      : "customerName",
+                },
                 { label: "担当者", key: "userName" },
-                { label: "お気に入り", key: "favoriteCount" },
+                ...(user?.role === UserRole.COMPANY_ADMIN
+                  ? [{ label: "お気に入り", key: "favoriteCount" }]
+                  : []),
                 { label: "操作", key: "" },
               ].map((th) => (
                 <th
@@ -188,15 +204,19 @@ const HistoryPage: React.FC = () => {
                   {h.createdAt}
                 </td>
                 <td className="border-b border-gray-300 px-3 py-2">
-                  {h.customerName}
+                  {user?.role === UserRole.SYSTEM_ADMIN
+                    ? h.companyName
+                    : h.customerName}
                 </td>
                 <td className="border-b border-gray-300 px-3 py-2">
                   {h.userName}
                 </td>
-                <td className="border-b border-gray-300 px-3 py-2 text-yellow-500">
-                  {"★".repeat(h.favoriteCount) +
-                    "☆".repeat(3 - h.favoriteCount)}
-                </td>
+                {user?.role === UserRole.COMPANY_ADMIN && (
+                  <td className="border-b border-gray-300 px-3 py-2 text-yellow-500">
+                    {"★".repeat(h.favoriteCount) +
+                      "☆".repeat(3 - h.favoriteCount)}
+                  </td>
+                )}
                 <td className="border-b border-gray-300 px-3 py-2 text-blue-600 cursor-pointer">
                   詳細
                 </td>
