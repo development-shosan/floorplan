@@ -51,7 +51,8 @@ const CompanyManagementPage = () => {
       const data: Company[] = response.companies;
       setCompanies(data);
     } catch (error) {
-      console.error("会社一覧の取得に失敗しました:", error);
+      console.error(error);
+      alert("会社一覧の取得に失敗しました");
     } finally {
       setLoading(false);
     }
