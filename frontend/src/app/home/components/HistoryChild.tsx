@@ -1,51 +1,19 @@
 "use client";
 
 import React from "react";
-import { History } from "@/constants/history";
+import {
+  createDummyPlanDetails,
+  History,
+  PlanDetail,
+} from "@/constants/history";
 import { HomeIcon } from "@heroicons/react/16/solid";
 import { StarIcon as StarOutline } from "@heroicons/react/24/outline";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 
-type PlanDetail = {
-  name: string;
-  ldkArea: string;
-  mainRoom: string;
-  childRoom: string;
-  landArea: string;
-  tag: string[];
-};
-
-const dummyPlanDetails: PlanDetail[] = [
-  {
-    name: "パターンA - スタンダード",
-    ldkArea: "18帖",
-    mainRoom: "6帖",
-    childRoom: "6帖×2",
-    landArea: "29.5坪",
-    tag: ["南向きLDK", "独立キッチン", "和室あり"],
-  },
-  {
-    name: "パターンB - ゆったり主寝室",
-    ldkArea: "17帖",
-    mainRoom: "10帖",
-    childRoom: "5帖×2",
-    landArea: "30.3坪",
-    tag: ["主寝室WIC付", "パントリー", "2階洗面"],
-  },
-  {
-    name: "パターンC - 広々LDK",
-    ldkArea: "19帖",
-    mainRoom: "6帖",
-    childRoom: "6帖×2",
-    landArea: "29.8坪",
-    tag: ["南側LDK", "アイランドキッチン", "スタディコーナー"],
-  },
-];
-
 interface HistoryChildProps {
   history: History;
   onBack: () => void;
-  onDetailClick: (history: History) => void;
+  onDetailClick: (plan: PlanDetail) => void;
 }
 
 const HistoryChild: React.FC<HistoryChildProps> = ({
@@ -53,6 +21,7 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
   onBack,
   onDetailClick,
 }) => {
+  const dummyPlanDetails = createDummyPlanDetails(history);
   return (
     <div className="p-6 w-[calc(100vw-25vw)] bg-white rounded-lg shadow-md mx-auto">
       <button onClick={onBack} className="text-gray-500 mb-4 hover:underline">
@@ -79,12 +48,7 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
 
       <div className="space-y-6">
         {dummyPlanDetails.map((plan, index) => (
-          <PlanCard
-            key={index}
-            plan={plan}
-            history={history}
-            onDetailClick={onDetailClick}
-          />
+          <PlanCard key={index} plan={plan} onDetailClick={onDetailClick} />
         ))}
       </div>
     </div>
@@ -93,9 +57,8 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
 
 const PlanCard: React.FC<{
   plan: PlanDetail;
-  history: History;
-  onDetailClick: (history: History) => void;
-}> = ({ plan, history, onDetailClick }) => {
+  onDetailClick: (plan: PlanDetail) => void;
+}> = ({ plan, onDetailClick }) => {
   const [isFavorite, setIsFavorite] = React.useState(false);
 
   const handleFavoriteToggle = (e: React.MouseEvent) => {
@@ -144,7 +107,7 @@ const PlanCard: React.FC<{
           )}
         </button>
         <button
-          onClick={() => onDetailClick(history)}
+          onClick={() => onDetailClick(plan)}
           className="flex items-center justify-center flex-1 bg-black text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors text-base"
         >
           <span className="mr-2 text-xl font-light">ⓘ</span>詳細表示

@@ -7,11 +7,12 @@ import {
   ChevronUpIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/16/solid";
-import { dummyHistories, History } from "@/constants/history";
+import { dummyHistories, History, PlanDetail } from "@/constants/history";
 import { useUser } from "@/hooks/userContext";
 import { UserRole } from "@/constants/roles";
 import HistoryChild from "./HistoryChild";
 import HistoryDetail from "./HistoryDetail";
+import HistoryPreview from "./HistoryPreview";
 
 const HistoryPage: React.FC = () => {
   const { user } = useUser();
@@ -24,9 +25,13 @@ const HistoryPage: React.FC = () => {
   const [endDateInput, setEndDateInput] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [tab, setTab] = useState<"all" | "favorite">("all");
-  const [isChildOpen, setIsChildOpen] = useState(false);
+
   const [selectedHistory, setSelectedHistory] = useState<History | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PlanDetail | null>(null);
+
+  const [isChildOpen, setIsChildOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const itemsPerPage = 10;
 
@@ -92,25 +97,37 @@ const HistoryPage: React.FC = () => {
     }
   };
 
-  const handleDetailClick = (history: History) => {
-    setSelectedHistory(history);
-    setIsChildOpen(true);
-  };
-
   const handleCloseChild = () => {
     setSelectedHistory(null);
     setIsChildOpen(false);
   };
 
-  const handleGoToDetail = (history: History) => {
+  const handleDetailClick = (history: History) => {
     setSelectedHistory(history);
+    setIsChildOpen(true);
+  };
+
+  const handleGoToDetail = (plan: PlanDetail) => {
+    setSelectedPlan(plan);
     setIsChildOpen(false);
     setIsDetailOpen(true);
+    setIsPreviewOpen(false);
   };
 
   const handleCloseDetail = () => {
     setIsDetailOpen(false);
     setIsChildOpen(true);
+  };
+
+  const handleGoToPreview = (plan: PlanDetail) => {
+    setSelectedPlan(plan);
+    setIsDetailOpen(false);
+    setIsPreviewOpen(true);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setIsDetailOpen(true);
   };
 
   const totalPages = Math.ceil(sorted.length / itemsPerPage);
@@ -119,8 +136,14 @@ const HistoryPage: React.FC = () => {
 
   return (
     <div>
-      {isDetailOpen && selectedHistory ? (
-        <HistoryDetail history={selectedHistory} onBack={handleCloseDetail} />
+      {isPreviewOpen && selectedPlan ? (
+        <HistoryPreview plan={selectedPlan} onBack={handleClosePreview} />
+      ) : isDetailOpen && selectedPlan ? (
+        <HistoryDetail
+          plan={selectedPlan}
+          onBack={handleCloseDetail}
+          onPreviewClick={handleGoToPreview}
+        />
       ) : isChildOpen && selectedHistory ? (
         <HistoryChild
           history={selectedHistory}
