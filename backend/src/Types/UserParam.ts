@@ -27,14 +27,11 @@ export type CreateUserDataInput = Pick<UserInfo, 'companyId' | 'email' | 'role'>
     phoneNumber: string;
 };
 
-export type ChangePasswordInput = {
-    currentPassword: string;
-    newPassword: string;
-};
-
 export type UpdateUserDataInput = Pick<
     CreateUserDataInput,
     'name' | 'role' | 'department' | 'phoneNumber'
 > & {
     status: boolean;
 };
+
+export type UserByUserId = Pick<UserInfo, 'role' | 'companyId'>;

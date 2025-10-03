@@ -2,9 +2,10 @@
    src/DBMgr.ts
 */
 import prisma from '../prisma/client';
-import { CreateUserDataInput, UpdateUserDataInput, UserInfo } from './types/UserParam';
-import { AuthTokenPayload, UserByEmail } from './types/LoginParam';
-import { Prisma, Role } from '@prisma/client';
+import {CreateUserDataInput, UpdateUserDataInput, UserByUserId, UserInfo} from './types/UserParam';
+import {AuthTokenPayload, UserByEmail} from './types/LoginParam';
+import { Prisma } from "@prisma/client";
+import { Role } from "@prisma/client";
 import { createLogger } from './logger';
 import { CompanyInfo, CreateCompanyDataInput, UpdateCompanyDataInput } from './types/CompanyParam';
 
@@ -131,28 +132,25 @@ export default class DBMgr {
         });
     }
 
-    /**
-     * Retrieves the password of a user by user ID and company ID.
-     *
-     * @param userId - The ID of the user
-     * @param companyId - The ID of the company the user belongs to
-     * @returns The user's password if found, otherwise null
-     */
-    public async getUserPasswordByUserId(
-        userId: number,
-        companyId: number
-    ): Promise<string | null> {
-        this.logger.debug(`getUserPasswordByUserId(${userId}, ${companyId})`);
+  /**
+   * Retrieves a user by their unique user ID.
+   *
+   * @param userId - The ID of the user
+   * @returns A promise that resolves to the user's role, companyId, otherwise null
+   */
+  public async getUserByUserId(userId: number): Promise<UserByUserId | null> {
+      this.logger.debug(`getUserByUserId(${userId}})`);
 
-        const result = await prisma.user.findFirst({
-            select: { password: true },
-            where: {
-                id: userId,
-                companyId: companyId
-            }
-        });
-        return result?.password ?? null;
-    }
+      return prisma.user.findUnique({
+        select: {
+          role: true,
+          companyId: true
+        },
+        where: {
+          id: userId
+        }
+      });
+  }
 
     /**
      * Retrieves the company ID associated with a given user ID.

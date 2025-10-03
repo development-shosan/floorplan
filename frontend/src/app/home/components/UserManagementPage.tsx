@@ -137,7 +137,7 @@ const UserManagementPage = () => {
         role: formUser.role,
         department: formUser.department,
         phoneNumber: formUser.phoneNumber,
-        status: true,
+        status: formUser.status,
       };
 
       //ユーザー情報登録API
@@ -355,7 +355,13 @@ const UserManagementPage = () => {
                         {UserRoleLabel[u.role as UserRole]}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2">
-                        {u.createdAt}
+                        {u.createdAt
+                          ? new Date(u.createdAt).toLocaleDateString("ja-JP", {
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                            })
+                          : "-"}
                       </td>
                       <td className="border-b border-gray-300 px-3 py-2 flex justify-center gap-2">
                         <button
