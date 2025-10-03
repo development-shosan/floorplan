@@ -137,7 +137,7 @@ const UserManagementPage = () => {
         role: formUser.role,
         department: formUser.department,
         phoneNumber: formUser.phoneNumber,
-        status: true,
+        status: formUser.status,
       };
 
       //ユーザー情報登録API
