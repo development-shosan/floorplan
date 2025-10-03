@@ -242,7 +242,16 @@ const HistoryPage: React.FC = () => {
                       {h.title}
                     </td>
                     <td className="border-b border-gray-300 px-3 py-2">
-                      {h.createdAt}
+                      {h.createdAt
+                        ? new Date(h.createdAt).toLocaleString("ja-JP", {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          })
+                        : "-"}
                     </td>
                     <td className="border-b border-gray-300 px-3 py-2">
                       {user?.role === UserRole.SYSTEM_ADMIN
