@@ -1,92 +1,135 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useUser } from "@/hooks/userContext";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useRef, useState } from "react";
 import { UserRole, UserRoleLabel } from "@/constants/roles";
+import { LoginResponse } from "@/hooks/userContext";
+import { HomeIcon } from "@heroicons/react/20/solid";
 
 interface MenuItem {
   label: string;
   roles: UserRole[];
 }
 
-const Header: React.FC = () => {
-  const { user, loading, logout } = useUser();
-  const router = useRouter();
+interface HeaderProps {
+  user: LoginResponse;
+  loading: boolean;
+  logout: () => void;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+}
 
-  const titles: MenuItem[] = [
-    { label: "🏠 間取り生成システム", roles: [UserRole.MEMBER] },
-    { label: "👥 ユーザー管理", roles: [UserRole.COMPANY_ADMIN] },
-    { label: "👥 会社管理 ", roles: [UserRole.SYSTEM_ADMIN] },
-  ];
+const Header: React.FC<HeaderProps> = ({
+  user,
+  loading,
+  logout,
+  activeTab,
+  setActiveTab,
+}) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const menuItems: MenuItem[] = [
-    { label: "間取り生成", roles: [UserRole.MEMBER] },
     {
       label: "対応履歴",
-      roles: [UserRole.MEMBER, UserRole.COMPANY_ADMIN, UserRole.SYSTEM_ADMIN],
+      roles: [UserRole.SYSTEM_ADMIN, UserRole.COMPANY_ADMIN, UserRole.MEMBER],
     },
-    { label: "⭐ お気に入り", roles: [UserRole.MEMBER] },
-    { label: "マイページ", roles: [UserRole.MEMBER] },
-    { label: "ユーザー管理", roles: [UserRole.COMPANY_ADMIN] },
     {
       label: "会社管理",
       roles: [UserRole.SYSTEM_ADMIN],
     },
+    {
+      label: "ユーザー管理",
+      roles: [UserRole.SYSTEM_ADMIN, UserRole.COMPANY_ADMIN],
+    },
+    {
+      label: "お問い合わせ",
+      roles: [UserRole.COMPANY_ADMIN],
+    },
   ];
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
-  }, [user, loading, router]);
-
-  if (loading) return <p>ロード中...</p>;
+  if (loading) return <p>{"ロード中..."}</p>;
   if (!user) return null;
 
-  const handleLogout = () => {
-    logout();
-  };
-
   const currentRole = user.role as UserRole;
+  const initials = user.name.charAt(0).toUpperCase();
 
   return (
-    <header className="flex items-center justify-between bg-[#3C4858] text-white px-6 py-4 rounded-lg text-lg">
-      <div className="flex items-center space-x-2">
-        {titles
-          .filter((item) => item.roles.includes(currentRole))
-          .map((item) => (
-            <h1 key={item.label} className="text-lg font-bold">
-              {item.label}
-            </h1>
-          ))}
+    <header
+      className={`flex items-center justify-between ${
+        currentRole === UserRole.SYSTEM_ADMIN
+          ? "bg-[#ec6361]"
+          : currentRole === UserRole.COMPANY_ADMIN
+          ? "bg-[#5e5cd8]"
+          : "bg-black"
+      } text-white px-6 py-3 relative`}
+    >
+      <div className="flex items-center space-x-4">
+        <h1 className="flex items-center text-xl font-semibold space-x-2">
+          <HomeIcon className="w-6 h-6 transform scale-x-120" />
+          <span>Plan Butler</span>
+        </h1>
+        <span className="text-sm text-gray-300">
+          {`${UserRoleLabel[currentRole]}用`}
+        </span>
       </div>
 
-      <nav className="flex items-center space-x-4">
+      <nav className="flex space-x-10">
         {menuItems
           .filter((item) => item.roles.includes(currentRole))
           .map((item) => (
             <button
               key={item.label}
-              className="bg-[#4A5568] hover:bg-[#5a6cdb] px-4 py-1 rounded"
+              onClick={() => setActiveTab(item.label)}
+              className={`relative text-lg ${
+                activeTab === item.label
+                  ? "text-white translate-y-[-4px] after:scale-x-100"
+                  : "text-gray-300 hover:text-white after:scale-x-0"
+              } after:content-[''] after:absolute after:-bottom-1 after:left-0 after:right-0 after:h-[2px] after:bg-white after:origin-left after:transition-transform after:duration-200 cursor-pointer transition-transform duration-200 hover:scale-110 hover:brightness-120`}
             >
               {item.label}
             </button>
           ))}
       </nav>
 
-      <div className="flex items-center space-x-4">
-        <p className="text-lg">
-          <span className="font-semibold">
-            {`${UserRoleLabel[currentRole]} : ${user.name}`}
-          </span>
-        </p>
+      <div className="relative" ref={dropdownRef}>
         <button
-          onClick={handleLogout}
-          className="bg-gray-200 text-gray-800 px-2 py-1 text-sm rounded hover:bg-gray-400"
+          onClick={() => setMenuOpen((prev) => !prev)}
+          className="flex items-center space-x-2 focus:outline-none cursor-pointer
+               transition-transform duration-200 hover:scale-105 hover:brightness-110"
         >
-          ログアウト
+          <div className="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold shadow-md">
+            {initials}
+          </div>
+          <p className="text-sm">{user.name}</p>
         </button>
+
+        {menuOpen && (
+          <div className="absolute right-0 mt-2 w-32 bg-white text-black rounded shadow-lg transition-all duration-200">
+            <button
+              onClick={logout}
+              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 "
+            >
+              {"ログアウト"}
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

@@ -10,3 +10,4 @@ export class BaseError extends Error {
     }
 }
 export class LoginError extends BaseError {}
+export class UserModificationError extends BaseError {}
