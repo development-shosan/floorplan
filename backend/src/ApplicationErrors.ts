@@ -3,7 +3,7 @@
 */
 
 export class BaseError extends Error {
-    constructor(message: string, skipFrames?: Function) {
+    constructor(message: string) {
         super(message);
         this.name = this.constructor.name;
         delete this.stack;

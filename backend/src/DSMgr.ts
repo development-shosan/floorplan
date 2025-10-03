@@ -2,8 +2,8 @@
    src/DSMgr.ts
 */
 import DBMgr from './DBMgr';
-import { AuthTokenPayload, LoginResult, UserByEmail } from './types/LoginParam';
-import { CreateUserDataInput, UpdateUserDataInput, UserInfoOutput } from './types/UserParam';
+import { AuthTokenPayload, LoginResult, UserByEmail } from './Types/LoginParam';
+import { CreateUserDataInput, UpdateUserDataInput, UserInfoOutput } from './Types/UserParam';
 import bcrypt from 'bcrypt';
 import { UserModificationError, LoginError } from './ApplicationErrors';
 import { AppConstant } from './SpecificCommons';
@@ -14,7 +14,7 @@ import {
     CompanyInfoOutput,
     CreateCompanyDataInput,
     UpdateCompanyDataInput
-} from './types/CompanyParam';
+} from './Types/CompanyParam';
 
 export default class DSMgr {
     private dbMgr: DBMgr;
@@ -284,6 +284,7 @@ export default class DSMgr {
      * @param targetRole - The role of the target user being modified
      */
     validateRolePermission(authRole: Role, targetRole: Role): void {
+        this.logger.debug(`validateRolePermission(${authRole}, ${targetRole})`);
         const isSystemAdminCreatingCompanyAdmin =
             Role.SYSTEM_ADMIN === authRole && Role.COMPANY_ADMIN === targetRole;
 

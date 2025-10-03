@@ -1,6 +1,3 @@
-import { Role } from '@prisma/client';
-import { CreateUserDataInput, UserInfoOutput } from './UserParam';
-
 export type CompanyInfo = {
     id: number;
     name: string;

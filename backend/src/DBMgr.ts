@@ -2,12 +2,16 @@
    src/DBMgr.ts
 */
 import prisma from '../prisma/client';
-import {CreateUserDataInput, UpdateUserDataInput, UserByUserId, UserInfo} from './types/UserParam';
-import {AuthTokenPayload, UserByEmail} from './types/LoginParam';
-import { Prisma } from "@prisma/client";
-import { Role } from "@prisma/client";
+import {
+    CreateUserDataInput,
+    UpdateUserDataInput,
+    UserByUserId,
+    UserInfo
+} from './Types/UserParam';
+import { AuthTokenPayload, UserByEmail } from './Types/LoginParam';
+import { Prisma, Role } from '@prisma/client';
 import { createLogger } from './logger';
-import { CompanyInfo, CreateCompanyDataInput, UpdateCompanyDataInput } from './types/CompanyParam';
+import { CompanyInfo, CreateCompanyDataInput, UpdateCompanyDataInput } from './Types/CompanyParam';
 
 export default class DBMgr {
     private logger;
@@ -132,25 +136,25 @@ export default class DBMgr {
         });
     }
 
-  /**
-   * Retrieves a user by their unique user ID.
-   *
-   * @param userId - The ID of the user
-   * @returns A promise that resolves to the user's role, companyId, otherwise null
-   */
-  public async getUserByUserId(userId: number): Promise<UserByUserId | null> {
-      this.logger.debug(`getUserByUserId(${userId}})`);
+    /**
+     * Retrieves a user by their unique user ID.
+     *
+     * @param userId - The ID of the user
+     * @returns A promise that resolves to the user's role, companyId, otherwise null
+     */
+    public async getUserByUserId(userId: number): Promise<UserByUserId | null> {
+        this.logger.debug(`getUserByUserId(${userId}})`);
 
-      return prisma.user.findUnique({
-        select: {
-          role: true,
-          companyId: true
-        },
-        where: {
-          id: userId
-        }
-      });
-  }
+        return prisma.user.findUnique({
+            select: {
+                role: true,
+                companyId: true
+            },
+            where: {
+                id: userId
+            }
+        });
+    }
 
     /**
      * Retrieves the company ID associated with a given user ID.

@@ -2,7 +2,7 @@
   commonUtils.ts
  */
 import jwt from 'jsonwebtoken';
-import { AuthTokenPayload } from './types/LoginParam';
+import { AuthTokenPayload } from './Types/LoginParam';
 import { env } from '../env';
 import type { StringValue } from 'ms';
 

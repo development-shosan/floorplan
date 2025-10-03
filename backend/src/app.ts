@@ -10,7 +10,7 @@ import cors from 'cors';
 import { body, param } from 'express-validator';
 import { refreshTokenIfValid, authorizeRoles } from './middlewares/auth.middleware';
 import { validatorErrorChecker } from './middlewares/validator.middleware';
-import { AuthTokenPayload } from './types/LoginParam';
+import { AuthTokenPayload } from './Types/LoginParam';
 import { env } from '../env';
 import { Role } from '@prisma/client';
 
