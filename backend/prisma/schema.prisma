@@ -31,64 +31,80 @@ model Company {
 }
 
 model User {
-  id              Int             @id @default(autoincrement())
-  email           String          @unique
-  name            String?
-  password        String?
-  department      String?
-  phoneNumber     String?
-  status          Boolean         @default(true)
-  role            Role            @default(MEMBER)
-  createdAt       DateTime        @default(now()) // 登録日
-  createdById     Int?
-  updatedAt       DateTime        @updatedAt // 修正日
-  updatedById     Int?
-  deleted         Boolean         @default(false) // 削除フラグ
-  companyId       Int
-  company         Company         @relation(fields: [companyId], references: [id], map: "user_company_fk")
-  invitation      Invitation?     @relation(fields: [invitationId], references: [id])
-  invitationId    String?         @unique
-  historyParents  HistoryParent[] @relation("UserToHistoryParent")
-  historyChildren HistoryChild[]  @relation("UserToHistoryChild")
+  id                    Int             @id @default(autoincrement())
+  email                 String          @unique
+  name                  String?
+  password              String?
+  department            String?
+  phoneNumber           String?
+  status                Boolean         @default(true)
+  role                  Role            @default(MEMBER)
+  createdAt             DateTime        @default(now()) // 登録日
+  createdById           Int?
+  updatedAt             DateTime        @updatedAt // 修正日
+  updatedById           Int?
+  deleted               Boolean         @default(false) // 削除フラグ
+  companyId             Int
+  company               Company         @relation(fields: [companyId], references: [id], map: "user_company_fk")
+  invitation            Invitation?     @relation(fields: [invitationId], references: [id])
+  invitationId          String?         @unique
+  historyParents        HistoryParent[] @relation("UserToHistoryParent")
+  updatedHistoryParents HistoryParent[] @relation("UserToHistoryParentUpdated")
+  historyChildren       HistoryChild[]  @relation("UserToHistoryChild")
 }
 
-// 履歴親テーブル
 model HistoryParent {
-  id              Int      @id @default(autoincrement())
-  title           String? // タイトル
-  conditions      Json // 条件のjson
-  tags            String? // タグ
-  favoriteCount   Int      @default(0) // お気に入り回数
-  customerName    String? // 顧客名
-  propertyAddress String? // 物件住所
-  createdAt       DateTime @default(now()) // 登録日
-  createdById     Int
-  createdBy       User @relation("UserToHistoryParent", fields: [createdById], references: [id])
-  updatedAt       DateTime @updatedAt // 修正日
-  // updatedById  Int? // 修正者ID
-  // updatedBy    User?    @relation("UpdatedHistoryParents", fields: [updatedById], references: [id]) // 修正者
-  deleted         Boolean  @default(false) // 削除フラグ
+  id    Int     @id @default(autoincrement())
+  title String? // タイトル (例: 3LDK間取り提案)
+
+  // 顧客の希望条件をJSONで保存
+  conditions Json // 顧客の希望条件（ご家族構成、階数、間口、奥行き、LDK希望面積、居室数、トイレ、動線のこだわりなど）
+
+  tags String? // タグ
+
+  totalFavoriteCount Int @default(0) // 全子パターンの合計
+
+  customerName String? // 顧客名
+  createdAt    DateTime @default(now()) // 登録日
+  createdById  Int
+  createdBy    User     @relation("UserToHistoryParent", fields: [createdById], references: [id])
+  updatedAt    DateTime @updatedAt // 修正日
+  updatedId    Int
+  updatedBy    User     @relation("UserToHistoryParentUpdated", fields: [updatedId], references: [id])
+  deleted      Boolean  @default(false) // 削除フラグ
 
   children HistoryChild[]
 }
 
 // 履歴子テーブル
 model HistoryChild {
-  id               Int           @id @default(autoincrement())
-  historyParentId  Int // 親ID
-  historyParent    HistoryParent @relation(fields: [historyParentId], references: [id], map: "history_child_parent_fk")
-  tag              String? // タグ
-  floorplanJson    Json // 間取図のjson
-  isDownloaded     Boolean       @default(false) // ダウンロード有無
+  // 固有ID (プライマリキー)
+  id Int @id @default(autoincrement())
+
+  historyParentId Int // 親ID
+  historyParent   HistoryParent @relation(fields: [historyParentId], references: [id], map: "history_child_parent_fk")
+
+  // 間取りパターン詳細情報
+  patternName String? // 【追加】パターン名 (例: パターンA - スタンダード)
+
+  // 【統合】間取り図データと詳細情報を一つのJSONに
+  floorplanData Json // 【統合】間取り図の幾何学データとパターン詳細（LDKサイズ、特徴タグなど）をまとめて保存するJSON
+
+  // お気に入りに関する修正
+  isPatternFavorite Boolean @default(false) // 【名称変更】ログインユーザーによる特定パターンのお気に入り
+
+  // 既存項目とプレビュー情報 (image_1f139f.png)
+  tag              String? // タグ (汎用)
+  isDownloaded     Boolean @default(false) // ダウンロード有無
   pdfPath          String? // PDFデータパス
-  isFavorite       Boolean       @default(false) // お気に入り
   constructionName String? // 工事名称
   scale            String? // 縮尺
   drawingFormat    String? // 図面形式
-  createdAt        DateTime      @default(now()) // 登録日
-  createdById      Int
-  createdBy        User @relation("UserToHistoryChild", fields: [createdById], references: [id])
-  deleted          Boolean       @default(false) // 削除フラグ
+
+  createdAt   DateTime @default(now()) // 登録日
+  createdById Int
+  createdBy   User     @relation("UserToHistoryChild", fields: [createdById], references: [id])
+  deleted     Boolean  @default(false) // 削除フラグ
 }
 
 // ユーザー招待を管理するモデル
