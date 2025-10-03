@@ -326,7 +326,7 @@ router.patch(
     '/company/:id',
     [param('id').exists().isNumeric()],
     refreshTokenIfValid,
-    authorizeRoles(Role.COMPANY_ADMIN),
+    authorizeRoles(Role.SYSTEM_ADMIN),
     validatorErrorChecker,
     async (req: Request, res: Response, next: NextFunction) => {
         try {
