@@ -12,6 +12,7 @@ import { AuthTokenPayload, UserByEmail } from './Types/LoginParam';
 import { Prisma, Role } from '@prisma/client';
 import { createLogger } from './logger';
 import { CompanyInfo, CreateCompanyDataInput, UpdateCompanyDataInput } from './Types/CompanyParam';
+import { HistoryChildInfo, HistoryInfo } from './Types/HistoryParam';
 
 export default class DBMgr {
     private logger;
@@ -247,6 +248,169 @@ export default class DBMgr {
         await prisma.company.update({
             where: { id: companyId },
             data: { ...updateData }
+        });
+    }
+
+    /**
+     * Gets a list of histories.
+     *
+     * @param userId - The ID of the user requesting the data
+     * @param authPayload - The authorization token payload of the requester
+     * @returns The list of histories
+     */
+    public async getHistories(
+        userId: number,
+        authPayload: AuthTokenPayload
+    ): Promise<HistoryInfo[] | null> {
+        this.logger.debug(`getHistories(${userId}, ${JSON.stringify(authPayload)}})`);
+
+        const where: Prisma.HistoryParentWhereInput = {
+            deleted: false,
+            createdBy: {
+                deleted: false,
+                company: {
+                    deleted: false
+                }
+            }
+        };
+
+        if (Role.COMPANY_ADMIN === authPayload.role) {
+            where.createdBy = {
+                deleted: false,
+                companyId: authPayload.companyId,
+                company: {
+                    deleted: false
+                }
+            };
+        } else if (Role.MEMBER === authPayload.role) {
+            where.createdBy = {
+                id: userId,
+                deleted: false,
+                companyId: authPayload.companyId,
+                company: {
+                    deleted: false
+                }
+            };
+        }
+
+        const histories = await prisma.historyParent.findMany({
+            select: {
+                id: true,
+                title: true,
+                totalFavoriteCount: true,
+                customerName: true,
+                createdAt: true,
+                createdById: true,
+                updatedAt: true,
+                updatedId: true,
+                conditions: true,
+                createdBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                        company: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    }
+                }
+            },
+            where,
+            orderBy: {
+                id: 'desc'
+            }
+        });
+
+        return histories.map((history) => ({
+            ...history,
+            favoriteCount: history.totalFavoriteCount,
+            updatedById: history.updatedId, // By nuke
+            companyId: history.createdBy.company.id,
+            companyName: history.createdBy.company.name,
+            userId: history.createdBy.id,
+            userName: history.createdBy.name ?? null,
+            createdBy: undefined
+        }));
+    }
+
+    /**
+     * Gets a list of history details.
+     *
+     * @param historyParentId - The ID of the parent history record
+     * @param userId - The ID of the user requesting the data
+     * @param authPayload - The authorization token payload of the requester
+     * @returns The list of child histories
+     */
+    public async getHistoryChildren(
+        historyParentId: number,
+        userId: number,
+        authPayload: AuthTokenPayload
+    ): Promise<HistoryChildInfo[] | null> {
+        this.logger.debug(
+            `getHistoryChildren(${historyParentId}, ${userId}, ${JSON.stringify(authPayload)}})`
+        );
+
+        const where: Prisma.HistoryChildWhereInput = {
+            historyParentId: historyParentId,
+            deleted: false,
+            historyParent: {
+                deleted: false,
+                createdBy: {
+                    deleted: false,
+                    company: {
+                        deleted: false
+                    }
+                }
+            }
+        };
+
+        if (Role.COMPANY_ADMIN === authPayload.role) {
+            where.historyParent = {
+                deleted: false,
+                createdBy: {
+                    deleted: false,
+                    companyId: authPayload.companyId,
+                    company: {
+                        deleted: false
+                    }
+                }
+            };
+        } else if (Role.MEMBER === authPayload.role) {
+            where.historyParent = {
+                deleted: false,
+                createdBy: {
+                    id: userId,
+                    deleted: false,
+                    companyId: authPayload.companyId,
+                    company: {
+                        deleted: false
+                    }
+                }
+            };
+        }
+
+        return prisma.historyChild.findMany({
+            select: {
+                id: true,
+                historyParentId: true,
+                patternName: true,
+                floorplanData: true,
+                isPatternFavorite: true,
+                tag: true,
+                isDownloaded: true,
+                pdfPath: true,
+                constructionName: true,
+                scale: true,
+                drawingFormat: true,
+                createdAt: true,
+                createdById: true
+            },
+            where,
+            orderBy: {
+                id: 'asc'
+            }
         });
     }
 

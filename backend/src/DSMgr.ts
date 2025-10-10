@@ -15,6 +15,7 @@ import {
     CreateCompanyDataInput,
     UpdateCompanyDataInput
 } from './Types/CompanyParam';
+import { HistoryChildInfo, HistoryChildInfoOutput, HistoryInfoOutput } from './Types/HistoryParam';
 
 export default class DSMgr {
     private dbMgr: DBMgr;
@@ -273,6 +274,62 @@ export default class DSMgr {
             await this.dbMgr.removeCompanyWithUsers(companyId);
         } catch (err) {
             this.logger.error('removeCompanyWithUsers() Unexpected error', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Gets a list of histories.
+     *
+     * @param userId - The ID of the user requesting the data
+     * @param authPayload - The authorization token payload of the requester
+     * @returns The list of histories
+     */
+    public async getHistories(
+        userId: number,
+        authPayload: AuthTokenPayload
+    ): Promise<HistoryInfoOutput> {
+        this.logger.debug(`getHistories(${userId}, ${JSON.stringify(authPayload)})`);
+
+        try {
+            const histories = await this.dbMgr.getHistories(userId, authPayload);
+            return {
+                histories: histories ?? []
+            };
+        } catch (err) {
+            this.logger.error('getHistories() Unexpected error', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Gets a list of history details.
+     *
+     * @param historyParentId - The ID of the parent history record
+     * @param userId - The ID of the user requesting the data
+     * @param authPayload - The authorization token payload of the requester
+     * @returns The list of child histories
+     */
+    public async getHistoryChildren(
+        historyParentId: number,
+        userId: number,
+        authPayload: AuthTokenPayload
+    ): Promise<HistoryChildInfoOutput> {
+        this.logger.debug(
+            `getHistoryChildren(${historyParentId}, ${userId}, ${JSON.stringify(authPayload)})`
+        );
+
+        try {
+            const historyChildren = await this.dbMgr.getHistoryChildren(
+                historyParentId,
+                userId,
+                authPayload
+            );
+            return {
+                historyChildren: historyChildren ?? []
+            };
+        } catch (err) {
+            this.logger.error('getHistoryChildren() Unexpected error', err);
             throw err;
         }
     }
