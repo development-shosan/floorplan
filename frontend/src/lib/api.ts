@@ -259,7 +259,8 @@ export const getHistoryList = (userId: number) => {
 // 対応履歴詳細
 export const getHistoryChildren = (userId: number, history: History) => {
   const { id } = history;
-  return fetchApi(`/api/v1/historyChildren/${id}/user/${userId}`, {
+  const historyParentId = id;
+  return fetchApi(`/api/v1/historyChildren/${historyParentId}/user/${userId}`, {
     method: "GET",
   });
 };
