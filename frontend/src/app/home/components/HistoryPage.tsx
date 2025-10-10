@@ -1,22 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Pagination from "./common/Pagination";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/16/solid";
-import { dummyHistories, History, PlanDetail } from "@/constants/history";
+import { StarIcon as StarOutline } from "@heroicons/react/24/outline";
+import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
+import { History, HistoryChildren } from "@/constants/history";
 import { useUser } from "@/hooks/userContext";
 import { UserRole } from "@/constants/roles";
 import HistoryChild from "./HistoryChild";
 import HistoryDetail from "./HistoryDetail";
 import HistoryPreview from "./HistoryPreview";
+import { getHistoryList } from "@/lib/api";
 
 const HistoryPage: React.FC = () => {
   const { user } = useUser();
 
+  const [histories, setHistories] = useState<History[]>([]);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -27,11 +31,15 @@ const HistoryPage: React.FC = () => {
   const [tab, setTab] = useState<"all" | "favorite">("all");
 
   const [selectedHistory, setSelectedHistory] = useState<History | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<PlanDetail | null>(null);
+  const [selectedChild, setSelectedChild] = useState<HistoryChildren | null>(
+    null
+  );
 
   const [isChildOpen, setIsChildOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const [loading, setLoading] = useState(true);
 
   const itemsPerPage = 10;
 
@@ -40,6 +48,27 @@ const HistoryPage: React.FC = () => {
     direction: "asc" | "desc";
   } | null>(null);
 
+  //対応履歴一覧API
+  const fetchHistories = async () => {
+    try {
+      if (!user) return;
+
+      setLoading(true);
+      const response = await getHistoryList(user.id);
+      const data: History[] = response.histories;
+      setHistories(data);
+    } catch (error) {
+      console.error(error);
+      alert("対応履歴一覧の取得に失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistories();
+  }, []);
+
   const handleSearch = () => {
     setSearch(searchInput);
     setStartDate(startDateInput);
@@ -47,8 +76,13 @@ const HistoryPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const filtered = dummyHistories.filter((h) => {
-    const matchName = h.customerName.includes(search);
+  const filteredHistories = histories.filter((h) => {
+    const matchName =
+      user?.role === "SYSTEM_ADMIN"
+        ? h.companyName?.includes(search)
+        : user?.role === "COMPANY_ADMIN"
+        ? h.customerName?.includes(search)
+        : h.title?.includes(search);
     const matchTab = tab === "all" ? true : h.favoriteCount >= 1;
 
     const createdDate = new Date(h.createdAt);
@@ -63,10 +97,10 @@ const HistoryPage: React.FC = () => {
     return matchName && matchTab && matchStart && matchEnd;
   });
 
-  const sorted = React.useMemo(() => {
-    const sortable = [...filtered];
+  const sortedHistories = React.useMemo(() => {
+    const sortableHistories = [...filteredHistories];
     if (sortConfig) {
-      sortable.sort((a, b) => {
+      sortableHistories.sort((a, b) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
 
@@ -83,8 +117,8 @@ const HistoryPage: React.FC = () => {
         return 0;
       });
     }
-    return sortable;
-  }, [filtered, sortConfig]);
+    return sortableHistories;
+  }, [filteredHistories, sortConfig]);
 
   const handleSort = (key: keyof History) => {
     if (sortConfig?.key === key) {
@@ -107,8 +141,8 @@ const HistoryPage: React.FC = () => {
     setIsChildOpen(true);
   };
 
-  const handleGoToDetail = (plan: PlanDetail) => {
-    setSelectedPlan(plan);
+  const handleGoToDetail = (child: HistoryChildren) => {
+    setSelectedChild(child);
     setIsChildOpen(false);
     setIsDetailOpen(true);
     setIsPreviewOpen(false);
@@ -119,8 +153,8 @@ const HistoryPage: React.FC = () => {
     setIsChildOpen(true);
   };
 
-  const handleGoToPreview = (plan: PlanDetail) => {
-    setSelectedPlan(plan);
+  const handleGoToPreview = (child: HistoryChildren) => {
+    setSelectedChild(child);
     setIsDetailOpen(false);
     setIsPreviewOpen(true);
   };
@@ -130,17 +164,27 @@ const HistoryPage: React.FC = () => {
     setIsDetailOpen(true);
   };
 
-  const totalPages = Math.ceil(sorted.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedHistories.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginated = sorted.slice(startIndex, startIndex + itemsPerPage);
+  const paginated = sortedHistories.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
   return (
     <div>
-      {isPreviewOpen && selectedPlan ? (
-        <HistoryPreview plan={selectedPlan} onBack={handleClosePreview} />
-      ) : isDetailOpen && selectedPlan ? (
+      {loading ? (
+        <p>{"ロード中..."}</p>
+      ) : isPreviewOpen && selectedHistory && selectedChild ? (
+        <HistoryPreview
+          history={selectedHistory}
+          child={selectedChild}
+          onBack={handleClosePreview}
+        />
+      ) : isDetailOpen && selectedHistory && selectedChild ? (
         <HistoryDetail
-          plan={selectedPlan}
+          history={selectedHistory}
+          child={selectedChild}
           onBack={handleCloseDetail}
           onPreviewClick={handleGoToPreview}
         />
@@ -181,9 +225,18 @@ const HistoryPage: React.FC = () => {
               <MagnifyingGlassIcon className="w-6 h-6 text-gray-500" />
               <input
                 type="text"
-                placeholder="顧客名で検索"
+                placeholder={
+                  user?.role === "SYSTEM_ADMIN"
+                    ? "会社名で検索"
+                    : user?.role === "COMPANY_ADMIN"
+                    ? "顧客名で検索"
+                    : "タイトルで検索"
+                }
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSearch();
+                }}
                 className="flex-1 outline-none"
               />
             </div>
@@ -211,26 +264,37 @@ const HistoryPage: React.FC = () => {
             <table className="min-w-full text-center border-collapse">
               <thead className="bg-gray-100">
                 <tr>
-                  {[
-                    { label: "ID", key: "id" },
-                    { label: "タイトル", key: "title" },
-                    { label: "生成日時", key: "createdAt" },
-                    {
-                      label:
-                        user?.role === UserRole.SYSTEM_ADMIN
-                          ? "会社名"
-                          : "顧客名",
-                      key:
-                        user?.role === UserRole.SYSTEM_ADMIN
-                          ? "companyName"
-                          : "customerName",
-                    },
-                    { label: "担当者", key: "userName" },
-                    ...(user?.role === UserRole.COMPANY_ADMIN
-                      ? [{ label: "お気に入り", key: "favoriteCount" }]
-                      : []),
-                    { label: "操作", key: "" },
-                  ].map((th) => (
+                  {(() => {
+                    if (user?.role === UserRole.SYSTEM_ADMIN) {
+                      return [
+                        { label: "ID", key: "id" },
+                        { label: "タイトル", key: "title" },
+                        { label: "生成日時", key: "createdAt" },
+                        { label: "会社名", key: "companyName" },
+                        { label: "担当者", key: "userName" },
+                        { label: "操作", key: "" },
+                      ];
+                    } else if (user?.role === UserRole.COMPANY_ADMIN) {
+                      return [
+                        { label: "ID", key: "id" },
+                        { label: "タイトル", key: "title" },
+                        { label: "生成日時", key: "createdAt" },
+                        { label: "顧客名", key: "customerName" },
+                        { label: "担当者", key: "userName" },
+                        { label: "お気に入り", key: "favoriteCount" },
+                        { label: "操作", key: "" },
+                      ];
+                    } else {
+                      return [
+                        { label: "ID", key: "id" },
+                        { label: "タイトル", key: "title" },
+                        { label: "生成日時", key: "createdAt" },
+                        { label: "修正日時", key: "updatedAt" },
+                        { label: "お気に入り", key: "favoriteCount" },
+                        { label: "操作", key: "" },
+                      ];
+                    }
+                  })().map((th) => (
                     <th
                       key={th.label}
                       className="border-b border-gray-300 px-3 py-2 font-medium cursor-pointer select-none"
@@ -255,6 +319,7 @@ const HistoryPage: React.FC = () => {
                   ))}
                 </tr>
               </thead>
+
               <tbody>
                 {paginated.map((h) => (
                   <tr key={h.id} className="hover:bg-gray-50">
@@ -276,20 +341,76 @@ const HistoryPage: React.FC = () => {
                           })
                         : "-"}
                     </td>
-                    <td className="border-b border-gray-300 px-3 py-2">
-                      {user?.role === UserRole.SYSTEM_ADMIN
-                        ? h.companyName
-                        : h.customerName}
-                    </td>
-                    <td className="border-b border-gray-300 px-3 py-2">
-                      {h.userName}
-                    </td>
-                    {user?.role === UserRole.COMPANY_ADMIN && (
-                      <td className="border-b border-gray-300 px-3 py-2 text-yellow-500">
-                        {"★".repeat(h.favoriteCount) +
-                          "☆".repeat(3 - h.favoriteCount)}
-                      </td>
+
+                    {user?.role === UserRole.SYSTEM_ADMIN && (
+                      <>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {h.companyName ?? "-"}
+                        </td>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {h.userName ?? "-"}
+                        </td>
+                      </>
                     )}
+
+                    {user?.role === UserRole.COMPANY_ADMIN && (
+                      <>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {h.customerName ?? "-"}
+                        </td>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {h.userName ?? "-"}
+                        </td>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {Array.from({ length: 3 }).map((_, i) =>
+                            i < h.favoriteCount ? (
+                              <StarSolid
+                                key={i}
+                                className="w-6 h-6 text-gray-500 inline"
+                              />
+                            ) : (
+                              <StarOutline
+                                key={i}
+                                className="w-6 h-6 text-gray-600 inline"
+                              />
+                            )
+                          )}
+                        </td>
+                      </>
+                    )}
+
+                    {user?.role === UserRole.MEMBER && (
+                      <>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {h.updatedAt
+                            ? new Date(h.updatedAt).toLocaleString("ja-JP", {
+                                year: "numeric",
+                                month: "2-digit",
+                                day: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                              })
+                            : "-"}
+                        </td>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {Array.from({ length: 3 }).map((_, i) =>
+                            i < h.favoriteCount ? (
+                              <StarSolid
+                                key={i}
+                                className="w-6 h-6 text-gray-500 inline"
+                              />
+                            ) : (
+                              <StarOutline
+                                key={i}
+                                className="w-6 h-6 text-gray-600 inline"
+                              />
+                            )
+                          )}
+                        </td>
+                      </>
+                    )}
+
                     <td className="border-b border-gray-300 px-3 py-2 flex justify-center gap-2">
                       <button
                         className="bg-gray-300 hover:bg-gray-400 px-3 py-1 rounded text-sm"
@@ -306,7 +427,7 @@ const HistoryPage: React.FC = () => {
             <div className="flex justify-between mt-4 text-sm text-gray-500">
               <span>{`Showing ${startIndex + 1} to ${
                 startIndex + paginated.length
-              } of ${sorted.length} results`}</span>
+              } of ${sortedHistories.length} results`}</span>
               {totalPages > 1 && (
                 <Pagination
                   currentPage={currentPage}
