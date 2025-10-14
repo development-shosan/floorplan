@@ -1,9 +1,446 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import Pagination from "./common/Pagination";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  MagnifyingGlassIcon,
+} from "@heroicons/react/16/solid";
+import { StarIcon as StarOutline } from "@heroicons/react/24/outline";
+import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
+import { History, HistoryChildren } from "@/constants/history";
+import { useUser } from "@/hooks/userContext";
+import { UserRole } from "@/constants/roles";
+import HistoryChild from "./HistoryChild";
+import HistoryDetail from "./HistoryDetail";
+import HistoryPreview from "./HistoryPreview";
+import { getHistoryList } from "@/lib/api";
 
 const HistoryPage: React.FC = () => {
-  return <div className="p-6">📋 対応履歴コンテンツ</div>;
+  const { user } = useUser();
+
+  const [histories, setHistories] = useState<History[]>([]);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [startDateInput, setStartDateInput] = useState("");
+  const [endDateInput, setEndDateInput] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [tab, setTab] = useState<"all" | "favorite">("all");
+
+  const [selectedHistory, setSelectedHistory] = useState<History | null>(null);
+  const [selectedChild, setSelectedChild] = useState<HistoryChildren | null>(
+    null
+  );
+
+  const [isChildOpen, setIsChildOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const [loading, setLoading] = useState(true);
+
+  const itemsPerPage = 10;
+
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof History;
+    direction: "asc" | "desc";
+  } | null>(null);
+
+  //対応履歴一覧API
+  const fetchHistories = async () => {
+    try {
+      if (!user) return;
+
+      setLoading(true);
+      const response = await getHistoryList(user.id);
+      const data: History[] = response.histories;
+      setHistories(data);
+    } catch (error) {
+      console.error(error);
+      alert("対応履歴一覧の取得に失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistories();
+  }, []);
+
+  const handleSearch = () => {
+    setSearch(searchInput);
+    setStartDate(startDateInput);
+    setEndDate(endDateInput);
+    setCurrentPage(1);
+  };
+
+  const filteredHistories = histories.filter((h) => {
+    const matchName =
+      user?.role === "SYSTEM_ADMIN"
+        ? h.companyName?.includes(search)
+        : user?.role === "COMPANY_ADMIN"
+        ? h.customerName?.includes(search)
+        : h.title?.includes(search);
+    const matchTab = tab === "all" ? true : h.favoriteCount >= 1;
+
+    const createdDate = new Date(h.createdAt);
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+
+    const matchStart = start ? createdDate >= start : true;
+    const matchEnd = end
+      ? createdDate <= new Date(end.getTime() + 24 * 60 * 60 * 1000 - 1)
+      : true;
+
+    return matchName && matchTab && matchStart && matchEnd;
+  });
+
+  const sortedHistories = React.useMemo(() => {
+    const sortableHistories = [...filteredHistories];
+    if (sortConfig) {
+      sortableHistories.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          return sortConfig.direction === "asc"
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+        if (typeof aValue === "number" && typeof bValue === "number") {
+          return sortConfig.direction === "asc"
+            ? aValue - bValue
+            : bValue - aValue;
+        }
+        return 0;
+      });
+    }
+    return sortableHistories;
+  }, [filteredHistories, sortConfig]);
+
+  const handleSort = (key: keyof History) => {
+    if (sortConfig?.key === key) {
+      setSortConfig({
+        key,
+        direction: sortConfig.direction === "asc" ? "desc" : "asc",
+      });
+    } else {
+      setSortConfig({ key, direction: "desc" });
+    }
+  };
+
+  const handleCloseChild = () => {
+    setSelectedHistory(null);
+    setIsChildOpen(false);
+  };
+
+  const handleDetailClick = (history: History) => {
+    setSelectedHistory(history);
+    setIsChildOpen(true);
+  };
+
+  const handleGoToDetail = (child: HistoryChildren) => {
+    setSelectedChild(child);
+    setIsChildOpen(false);
+    setIsDetailOpen(true);
+    setIsPreviewOpen(false);
+  };
+
+  const handleCloseDetail = () => {
+    setIsDetailOpen(false);
+    setIsChildOpen(true);
+  };
+
+  const handleGoToPreview = (child: HistoryChildren) => {
+    setSelectedChild(child);
+    setIsDetailOpen(false);
+    setIsPreviewOpen(true);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setIsDetailOpen(true);
+  };
+
+  const totalPages = Math.ceil(sortedHistories.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginated = sortedHistories.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+  return (
+    <div>
+      {loading ? (
+        <p>{"ロード中..."}</p>
+      ) : isPreviewOpen && selectedHistory && selectedChild ? (
+        <HistoryPreview
+          history={selectedHistory}
+          child={selectedChild}
+          onBack={handleClosePreview}
+        />
+      ) : isDetailOpen && selectedHistory && selectedChild ? (
+        <HistoryDetail
+          history={selectedHistory}
+          child={selectedChild}
+          onBack={handleCloseDetail}
+          onPreviewClick={handleGoToPreview}
+        />
+      ) : isChildOpen && selectedHistory ? (
+        <HistoryChild
+          history={selectedHistory}
+          onBack={handleCloseChild}
+          onDetailClick={handleGoToDetail}
+        />
+      ) : (
+        <>
+          <div className="flex gap-4 mb-6">
+            {(user?.role === UserRole.COMPANY_ADMIN
+              ? ["all", "favorite"]
+              : ["all"]
+            ).map((item) => {
+              const label = item === "all" ? "すべて" : "お気に入り";
+              const isActive = tab === item;
+
+              return (
+                <button
+                  key={item}
+                  onClick={() => setTab(item as "all" | "favorite")}
+                  className={`relative text-lg transition-transform duration-200 cursor-pointer ${
+                    isActive
+                      ? "text-black translate-y-[-2px] after:scale-x-100"
+                      : "text-gray-400 hover:text-black after:scale-x-0"
+                  } after:content-[''] after:absolute after:-bottom-1 after:left-0 after:right-0 after:h-[2px] after:bg-black after:origin-left after:transition-transform after:duration-200 hover:scale-110`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex gap-2 mb-6">
+            <div className="flex items-center gap-2 border border-gray-300 px-3 py-2 rounded flex-1 focus-within:ring-2 focus-within:ring-blue-400">
+              <MagnifyingGlassIcon className="w-6 h-6 text-gray-500" />
+              <input
+                type="text"
+                placeholder={
+                  user?.role === "SYSTEM_ADMIN"
+                    ? "会社名で検索"
+                    : user?.role === "COMPANY_ADMIN"
+                    ? "顧客名で検索"
+                    : "タイトルで検索"
+                }
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSearch();
+                }}
+                className="flex-1 outline-none"
+              />
+            </div>
+            <input
+              type="date"
+              value={startDateInput}
+              onChange={(e) => setStartDateInput(e.target.value)}
+              className="border border-gray-300 px-3 py-2 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <input
+              type="date"
+              value={endDateInput}
+              onChange={(e) => setEndDateInput(e.target.value)}
+              className="border border-gray-300 px-3 py-2 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 flex-1"
+              onClick={handleSearch}
+            >
+              検索
+            </button>
+          </div>
+
+          <div className="overflow-x-auto overflow-y-auto h-[calc(100vh-35vh)] mt-4">
+            <table className="min-w-full text-center border-collapse">
+              <thead className="bg-gray-100">
+                <tr>
+                  {(() => {
+                    if (user?.role === UserRole.SYSTEM_ADMIN) {
+                      return [
+                        { label: "ID", key: "id" },
+                        { label: "タイトル", key: "title" },
+                        { label: "生成日時", key: "createdAt" },
+                        { label: "会社名", key: "companyName" },
+                        { label: "担当者", key: "userName" },
+                        { label: "操作", key: "" },
+                      ];
+                    } else if (user?.role === UserRole.COMPANY_ADMIN) {
+                      return [
+                        { label: "ID", key: "id" },
+                        { label: "タイトル", key: "title" },
+                        { label: "生成日時", key: "createdAt" },
+                        { label: "顧客名", key: "customerName" },
+                        { label: "担当者", key: "userName" },
+                        { label: "お気に入り", key: "favoriteCount" },
+                        { label: "操作", key: "" },
+                      ];
+                    } else {
+                      return [
+                        { label: "ID", key: "id" },
+                        { label: "タイトル", key: "title" },
+                        { label: "生成日時", key: "createdAt" },
+                        { label: "修正日時", key: "updatedAt" },
+                        { label: "お気に入り", key: "favoriteCount" },
+                        { label: "操作", key: "" },
+                      ];
+                    }
+                  })().map((th) => (
+                    <th
+                      key={th.label}
+                      className="border-b border-gray-300 px-3 py-2 font-medium cursor-pointer select-none"
+                      onClick={() =>
+                        th.key && handleSort(th.key as keyof History)
+                      }
+                    >
+                      <div className="flex items-center justify-center">
+                        <span className="mr-2">{th.label}</span>
+                        {th.key &&
+                          (sortConfig?.key === th.key ? (
+                            sortConfig.direction === "asc" ? (
+                              <ChevronUpIcon className="w-4 h-4 text-gray-500" />
+                            ) : (
+                              <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+                            )
+                          ) : (
+                            <ChevronUpIcon className="w-4 h-4 text-gray-500" />
+                          ))}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody>
+                {paginated.map((h) => (
+                  <tr key={h.id} className="hover:bg-gray-50">
+                    <td className="border-b border-gray-300 px-3 py-2">
+                      #{h.id.toString().padStart(6, "0")}
+                    </td>
+                    <td className="border-b border-gray-300 px-3 py-2">
+                      {h.title}
+                    </td>
+                    <td className="border-b border-gray-300 px-3 py-2">
+                      {h.createdAt
+                        ? new Date(h.createdAt).toLocaleString("ja-JP", {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          })
+                        : "-"}
+                    </td>
+
+                    {user?.role === UserRole.SYSTEM_ADMIN && (
+                      <>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {h.companyName ?? "-"}
+                        </td>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {h.userName ?? "-"}
+                        </td>
+                      </>
+                    )}
+
+                    {user?.role === UserRole.COMPANY_ADMIN && (
+                      <>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {h.customerName ?? "-"}
+                        </td>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {h.userName ?? "-"}
+                        </td>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {Array.from({ length: 3 }).map((_, i) =>
+                            i < h.favoriteCount ? (
+                              <StarSolid
+                                key={i}
+                                className="w-6 h-6 text-gray-500 inline"
+                              />
+                            ) : (
+                              <StarOutline
+                                key={i}
+                                className="w-6 h-6 text-gray-600 inline"
+                              />
+                            )
+                          )}
+                        </td>
+                      </>
+                    )}
+
+                    {user?.role === UserRole.MEMBER && (
+                      <>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {h.updatedAt
+                            ? new Date(h.updatedAt).toLocaleString("ja-JP", {
+                                year: "numeric",
+                                month: "2-digit",
+                                day: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                              })
+                            : "-"}
+                        </td>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {Array.from({ length: 3 }).map((_, i) =>
+                            i < h.favoriteCount ? (
+                              <StarSolid
+                                key={i}
+                                className="w-6 h-6 text-gray-500 inline"
+                              />
+                            ) : (
+                              <StarOutline
+                                key={i}
+                                className="w-6 h-6 text-gray-600 inline"
+                              />
+                            )
+                          )}
+                        </td>
+                      </>
+                    )}
+
+                    <td className="border-b border-gray-300 px-3 py-2 flex justify-center gap-2">
+                      <button
+                        className="bg-gray-300 hover:bg-gray-400 px-3 py-1 rounded text-sm"
+                        onClick={() => handleDetailClick(h)}
+                      >
+                        詳細
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="flex justify-between mt-4 text-sm text-gray-500">
+              <span>{`Showing ${startIndex + 1} to ${
+                startIndex + paginated.length
+              } of ${sortedHistories.length} results`}</span>
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 };
 
 export default HistoryPage;

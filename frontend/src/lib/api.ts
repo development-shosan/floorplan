@@ -1,4 +1,5 @@
 import { CompanyFormData } from "@/constants/company";
+import { History } from "@/constants/history";
 import { UserFormData } from "@/constants/user";
 import { LoginResponse } from "@/hooks/userContext";
 import { jwtDecode } from "jwt-decode";
@@ -248,4 +249,18 @@ export const updateCompany = (formCompany: CompanyFormData) => {
 export const deleteCompany = (formCompany: CompanyFormData) => {
   const { id } = formCompany;
   return fetchApi(`/api/v1/company/${id}`, { method: "PATCH" });
+};
+
+// 対応履歴一覧
+export const getHistoryList = (userId: number) => {
+  return fetchApi(`/api/v1/histories/${userId}`, { method: "GET" });
+};
+
+// 対応履歴詳細
+export const getHistoryChildren = (userId: number, history: History) => {
+  const { id } = history;
+  const historyParentId = id;
+  return fetchApi(`/api/v1/historyChildren/${historyParentId}/user/${userId}`, {
+    method: "GET",
+  });
 };
