@@ -344,6 +344,64 @@ router.patch(
     }
 );
 
+/**
+ *  Gets a list of histories.
+ *      Request param:
+ *          curl -i -X GET -H "Authorization: TOKEN" http://localhost:4000/api/v1/histories/5
+ *
+ *      Response: The list of histories
+ */
+router.get(
+    '/histories/:userId',
+    [param('userId').exists().isNumeric()],
+    refreshTokenIfValid,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const authPayload: AuthTokenPayload | undefined = req.user;
+            if (!authPayload) {
+                res.sendStatus(403);
+                return;
+            }
+            const userId: number = Number(req.params.userId);
+            const result = await dsMgr.getHistories(userId, authPayload);
+            res.json(result);
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Gets a list of history details.
+ *      Request param:
+ *          curl -i -X GET -H "Authorization: TOKEN" http://localhost:4000/api/v1/historyChildren/3/user/5
+ *
+ *      Response: The list of child histories
+ */
+router.get(
+    '/historyChildren/:historyParentId/user/:userId',
+    [param('historyParentId').exists().isNumeric()],
+    [param('userId').exists().isNumeric()],
+    refreshTokenIfValid,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const authPayload: AuthTokenPayload | undefined = req.user;
+            if (!authPayload) {
+                res.sendStatus(403);
+                return;
+            }
+            const historyParentId: number = Number(req.params.historyParentId);
+            const userId: number = Number(req.params.userId);
+            const result = await dsMgr.getHistoryChildren(historyParentId, userId, authPayload);
+            res.json(result);
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+    }
+);
+
 app.listen(PORT, () => {
     console.log(`Backend server running on port ${PORT}`);
     console.log(`Access it at http://localhost:${PORT}`);
