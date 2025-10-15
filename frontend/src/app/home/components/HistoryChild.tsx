@@ -120,7 +120,13 @@ const ChildCard: React.FC<{
     <div className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm">
       <h2 className="text-xl font-semibold mb-4">{child.patternName}</h2>
       <div className="relative mb-6 p-2 bg-gray-100 rounded-lg overflow-hidden shadow-inner pointer-events-none">
-        <FloorPlanViewer originalData={child.floorplanData} />
+        {child.floorplanData ? (
+          <FloorPlanViewer originalData={child.floorplanData} />
+        ) : (
+          <div className="flex items-center justify-center h-48 text-gray-500 text-sm">
+            間取り図データがありません
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
         {child.attributes?.map((attr, index) => {
