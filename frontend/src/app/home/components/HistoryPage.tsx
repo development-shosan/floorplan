@@ -17,7 +17,11 @@ import HistoryDetail from "./HistoryDetail";
 import HistoryPreview from "./HistoryPreview";
 import { getHistoryList } from "@/lib/api";
 
-const HistoryPage: React.FC = () => {
+interface HistoryPageProps {
+  resetSignal?: number;
+}
+
+const HistoryPage: React.FC<HistoryPageProps> = ({ resetSignal }) => {
   const { user } = useUser();
 
   const [histories, setHistories] = useState<History[]>([]);
@@ -69,6 +73,23 @@ const HistoryPage: React.FC = () => {
     fetchHistories();
   }, []);
 
+  useEffect(() => {
+    setSelectedHistory(null);
+    setSelectedChild(null);
+    setIsChildOpen(false);
+    setIsDetailOpen(false);
+    setIsPreviewOpen(false);
+    setSearch("");
+    setSearchInput("");
+    setStartDate("");
+    setStartDateInput("");
+    setEndDate("");
+    setEndDateInput("");
+    setCurrentPage(1);
+    setTab("all");
+    setSortConfig(null);
+  }, [resetSignal]);
+
   const handleSearch = () => {
     setSearch(searchInput);
     setStartDate(startDateInput);
@@ -80,9 +101,7 @@ const HistoryPage: React.FC = () => {
     const matchName =
       user?.role === "SYSTEM_ADMIN"
         ? h.companyName?.includes(search)
-        : user?.role === "COMPANY_ADMIN"
-        ? h.customerName?.includes(search)
-        : h.title?.includes(search);
+        : h.title?.includes(search) || h.customerName?.includes(search);
     const matchTab = tab === "all" ? true : h.favoriteCount >= 1;
 
     const createdDate = new Date(h.createdAt);
@@ -197,7 +216,7 @@ const HistoryPage: React.FC = () => {
       ) : (
         <>
           <div className="flex gap-4 mb-6">
-            {(user?.role === UserRole.COMPANY_ADMIN
+            {(user?.role !== UserRole.SYSTEM_ADMIN
               ? ["all", "favorite"]
               : ["all"]
             ).map((item) => {
@@ -220,44 +239,66 @@ const HistoryPage: React.FC = () => {
             })}
           </div>
 
-          <div className="flex gap-2 mb-6">
-            <div className="flex items-center gap-2 border border-gray-300 px-3 py-2 rounded flex-1 focus-within:ring-2 focus-within:ring-blue-400">
-              <MagnifyingGlassIcon className="w-6 h-6 text-gray-500" />
-              <input
-                type="text"
-                placeholder={
-                  user?.role === "SYSTEM_ADMIN"
-                    ? "会社名で検索"
-                    : user?.role === "COMPANY_ADMIN"
-                    ? "顧客名で検索"
-                    : "タイトルで検索"
-                }
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSearch();
-                }}
-                className="flex-1 outline-none"
-              />
+          <div className="border border-gray-200 rounded-lg p-6 mb-6 bg-gray-100">
+            <div className="flex gap-4 items-end">
+              <div className="flex flex-col flex-1">
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  {user?.role === "SYSTEM_ADMIN"
+                    ? "会社名"
+                    : "タイトル / 顧客名"}
+                </label>
+                <div className="flex items-center gap-2 border border-gray-300 px-3 py-2 rounded bg-white focus-within:ring-2 focus-within:ring-blue-400">
+                  <MagnifyingGlassIcon className="w-5 h-5 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder={
+                      user?.role === "SYSTEM_ADMIN"
+                        ? "会社名で検索"
+                        : "タイトル、顧客名で検索"
+                    }
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSearch();
+                    }}
+                    className="flex-1 outline-none text-sm bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col flex-1">
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  開始日
+                </label>
+                <input
+                  type="date"
+                  value={startDateInput}
+                  onChange={(e) => setStartDateInput(e.target.value)}
+                  className="border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm bg-white"
+                />
+              </div>
+
+              <div className="flex flex-col flex-1">
+                <label className="text-sm font-medium text-gray-700 mb-1">
+                  終了日
+                </label>
+                <input
+                  type="date"
+                  value={endDateInput}
+                  onChange={(e) => setEndDateInput(e.target.value)}
+                  className="border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm bg-white"
+                />
+              </div>
+
+              <div className="flex flex-col flex-1">
+                <button
+                  className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 transition text-sm"
+                  onClick={handleSearch}
+                >
+                  検索
+                </button>
+              </div>
             </div>
-            <input
-              type="date"
-              value={startDateInput}
-              onChange={(e) => setStartDateInput(e.target.value)}
-              className="border border-gray-300 px-3 py-2 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <input
-              type="date"
-              value={endDateInput}
-              onChange={(e) => setEndDateInput(e.target.value)}
-              className="border border-gray-300 px-3 py-2 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <button
-              className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 flex-1"
-              onClick={handleSearch}
-            >
-              検索
-            </button>
           </div>
 
           <div className="overflow-x-auto overflow-y-auto h-[calc(100vh-35vh)] mt-4">
@@ -290,6 +331,7 @@ const HistoryPage: React.FC = () => {
                         { label: "タイトル", key: "title" },
                         { label: "生成日時", key: "createdAt" },
                         { label: "修正日時", key: "updatedAt" },
+                        { label: "顧客名", key: "customerName" },
                         { label: "お気に入り", key: "favoriteCount" },
                         { label: "操作", key: "" },
                       ];
@@ -392,6 +434,9 @@ const HistoryPage: React.FC = () => {
                                 hour12: false,
                               })
                             : "-"}
+                        </td>
+                        <td className="border-b border-gray-300 px-3 py-2">
+                          {h.customerName ?? "-"}
                         </td>
                         <td className="border-b border-gray-300 px-3 py-2">
                           {Array.from({ length: 3 }).map((_, i) =>

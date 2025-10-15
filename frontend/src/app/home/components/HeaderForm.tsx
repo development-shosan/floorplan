@@ -16,6 +16,7 @@ interface HeaderProps {
   logout: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onTabReset?: (tab: string) => void; // 추가
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -24,6 +25,7 @@ const Header: React.FC<HeaderProps> = ({
   logout,
   activeTab,
   setActiveTab,
+  onTabReset,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -96,7 +98,13 @@ const Header: React.FC<HeaderProps> = ({
           .map((item) => (
             <button
               key={item.label}
-              onClick={() => setActiveTab(item.label)}
+              onClick={() => {
+                if (activeTab === item.label) {
+                  onTabReset?.(item.label);
+                } else {
+                  setActiveTab(item.label);
+                }
+              }}
               className={`relative text-lg ${
                 activeTab === item.label
                   ? "text-white translate-y-[-4px] after:scale-x-100"
@@ -135,4 +143,4 @@ const Header: React.FC<HeaderProps> = ({
   );
 };
 
-export default Header;
+export default React.memo(Header);
