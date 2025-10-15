@@ -63,6 +63,7 @@ export interface HistoryChildren {
   historyParentId: number; // 親ID
   patternName: string; // 間取りパターン詳細情報
   floorplanData: FloorPlanData; // 間取り図JSONデータ
+  attributes?: string[]; // 属性
   isPatternFavorite: boolean; // お気に入り
   tag: string; // タグ（,区切り）
   isDownloaded: boolean; // ダウンロード済み
