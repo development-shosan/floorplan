@@ -116,25 +116,28 @@ const ChildCard: React.FC<{
     setIsFavorite(newState);
   };
 
-  const handleDelete = (child: HistoryChildren) => {
-    alert(child.id);
-  };
-
   return (
     <div className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm">
       <h2 className="text-xl font-semibold mb-4">{child.patternName}</h2>
       <div className="relative mb-6 p-2 bg-gray-100 rounded-lg overflow-hidden shadow-inner pointer-events-none">
-        <FloorPlanViewer originalData={child.floorplanData} />
+        {child.floorplanData ? (
+          <FloorPlanViewer originalData={child.floorplanData} />
+        ) : (
+          <div className="flex items-center justify-center h-48 text-gray-500 text-sm">
+            間取り図データがありません
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-        <div className="text-gray-500">LDK:</div>
-        <div className="text-right font-medium">{"ldkArea"}</div>
-        <div className="text-gray-500">主寝室:</div>
-        <div className="text-right font-medium">{"mainRoom"}</div>
-        <div className="text-gray-500">子供部屋:</div>
-        <div className="text-right font-medium">{"childRoom"}</div>
-        <div className="text-gray-500">延床面積:</div>
-        <div className="text-right font-medium">{"landArea"}</div>
+        {child.attributes?.map((attr, index) => {
+          const [label, value] = attr.split(":").map((s) => s.trim());
+          return (
+            <React.Fragment key={index}>
+              <div className="text-gray-500">{label}:</div>
+              <div className="text-right font-medium">{value}</div>
+            </React.Fragment>
+          );
+        })}
       </div>
       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
         {child.tag
@@ -168,7 +171,7 @@ const ChildCard: React.FC<{
         </button>
 
         <button
-          onClick={() => handleDelete(child)}
+          onClick={() => {}}
           className="p-3 border border-gray-300 rounded-lg hover:bg-red-50 transition-colors ml-20"
         >
           <TrashIcon className="w-6 h-6 text-gray-600" />
