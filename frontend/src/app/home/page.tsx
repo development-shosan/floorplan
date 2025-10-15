@@ -14,21 +14,28 @@ const Home: React.FC = () => {
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<string>("対応履歴");
+  const [resetSignal, setResetSignal] = useState(0);
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push("/login");
-      }
+    if (!loading && !user) {
+      router.push("/login");
     }
   }, [user, loading, router]);
 
   if (loading || !user) return <p>ロード中...</p>;
 
+  const handleTabChange = (tab: string) => {
+    if (tab === activeTab) {
+      setResetSignal((prev) => prev + 1);
+    } else {
+      setActiveTab(tab);
+    }
+  };
+
   const componentMap: Record<string, React.ReactNode> = {
-    対応履歴: <HistoryPage />,
-    会社管理: <CompanyManagementPage />,
-    ユーザー管理: <UserManagementPage />,
+    対応履歴: <HistoryPage resetSignal={resetSignal} />,
+    会社管理: <CompanyManagementPage resetSignal={resetSignal} />,
+    ユーザー管理: <UserManagementPage resetSignal={resetSignal} />,
     お問い合わせ: <ContactPage />,
   };
 
@@ -39,7 +46,8 @@ const Home: React.FC = () => {
         loading={loading}
         logout={logout}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleTabChange}
+        onTabReset={() => setResetSignal((prev) => prev + 1)}
       />
       <main className="bg-white rounded-lg p-10 m-4">
         {componentMap[activeTab] || <p>コンテンツがありません</p>}

@@ -17,7 +17,13 @@ import {
 } from "@/lib/api";
 import { redirect } from "next/navigation";
 
-const CompanyManagementPage = () => {
+interface CompanyManagementPageProps {
+  resetSignal?: number;
+}
+
+const CompanyManagementPage: React.FC<CompanyManagementPageProps> = ({
+  resetSignal,
+}) => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [search, setSearch] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -61,6 +67,28 @@ const CompanyManagementPage = () => {
   useEffect(() => {
     fetchCompanies();
   }, []);
+
+  useEffect(() => {
+    setSearch("");
+    setIsFormOpen(false);
+    setEditingCompany(null);
+    setFormCompany({
+      name: "",
+      nameKana: "",
+      representative: "",
+      email: "",
+      postalCode: "",
+      prefecture: "",
+      city: "",
+      streetAddress: "",
+      status: true,
+    });
+    setCurrentPage(1);
+    setSortConfig({
+      key: "id",
+      direction: "asc",
+    });
+  }, [resetSignal]);
 
   // 新規会社登録
   const handleAddCompany = async () => {

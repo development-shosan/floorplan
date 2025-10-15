@@ -13,7 +13,13 @@ import {
 } from "@heroicons/react/16/solid";
 import { createUser, getUserList, updateUser } from "@/lib/api";
 
-const UserManagementPage = () => {
+interface UserManagementPageProps {
+  resetSignal?: number;
+}
+
+const UserManagementPage: React.FC<UserManagementPageProps> = ({
+  resetSignal,
+}) => {
   const { user } = useUser();
 
   const [users, setUsers] = useState<User[]>([]);
@@ -59,6 +65,27 @@ const UserManagementPage = () => {
   useEffect(() => {
     fetchUsers();
   }, [user]);
+
+  useEffect(() => {
+    setSearch("");
+    setIsFormOpen(false);
+    setEditingUser(null);
+    setFormUser({
+      name: "",
+      companyId: user?.role === UserRole.COMPANY_ADMIN ? user.companyId : 1,
+      companyName: "",
+      email: "",
+      role: user?.role === UserRole.SYSTEM_ADMIN ? "COMPANY_ADMIN" : "MEMBER",
+      department: "",
+      phoneNumber: "",
+      status: true,
+    });
+    setCurrentPage(1);
+    setSortConfig({
+      key: "id",
+      direction: "asc",
+    });
+  }, [resetSignal, user]);
 
   // 新規ユーザー登録
   const handleAddUser = async () => {
