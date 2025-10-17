@@ -7,7 +7,8 @@ import { StarIcon as StarOutline } from "@heroicons/react/24/outline";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import FloorPlanViewer from "./FloorPlanViewer";
 import { TrashIcon } from "@heroicons/react/24/solid";
-import { useUser } from "@/hooks/userContext";
+import { LoginResponse, useUser } from "@/hooks/userContext";
+import { UserRole } from "@/constants/roles";
 import { getHistoryChildren } from "@/lib/api";
 
 interface HistoryChildProps {
@@ -85,8 +86,8 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
             {historyChildren.map((child, index) => (
               <ChildCard
                 key={index}
-                history={history}
                 child={child}
+                user={user}
                 onDetailClick={onDetailClick}
               />
             ))}
@@ -98,10 +99,10 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
 };
 
 const ChildCard: React.FC<{
-  history: History;
   child: HistoryChildren;
+  user: LoginResponse | null;
   onDetailClick: (child: HistoryChildren) => void;
-}> = ({ child, onDetailClick }) => {
+}> = ({ child, user, onDetailClick }) => {
   const [isFavorite, setIsFavorite] = React.useState(
     child.isPatternFavorite ?? false
   );
@@ -128,17 +129,38 @@ const ChildCard: React.FC<{
           </div>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-        {child.attributes?.map((attr, index) => {
-          const [label, value] = attr.split(":").map((s) => s.trim());
-          return (
-            <React.Fragment key={index}>
-              <div className="text-gray-500">{label}:</div>
-              <div className="text-right font-medium">{value}</div>
-            </React.Fragment>
-          );
-        })}
+
+      <div className="flex flex-col gap-y-2 text-sm">
+        {/* LDK */}
+        <div className="flex justify-between">
+          <div className="text-gray-500">LDK:</div>
+          <div className="text-right font-medium">
+            {child.attributes?.ldk ?? null}帖
+          </div>
+        </div>
+        {/* 主寝室 */}
+        <div className="flex justify-between">
+          <div className="text-gray-500">主寝室:</div>
+          <div className="text-right font-medium">
+            {child.attributes?.masterBedroom ?? null}帖
+          </div>
+        </div>
+        {/* 子供部屋 */}
+        <div className="flex justify-between">
+          <div className="text-gray-500">子供部屋:</div>
+          <div className="text-right font-medium">
+            {child.attributes?.childrensRoom ?? null}帖
+          </div>
+        </div>
+        {/* 延床面積 */}
+        <div className="flex justify-between">
+          <div className="text-gray-500">延床面積:</div>
+          <div className="text-right font-medium">
+            {child.attributes?.totalFloorArea ?? null}坪
+          </div>
+        </div>
       </div>
+
       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
         {child.tag
           ? child.tag.split(",").map((tag, i) => (
@@ -154,12 +176,23 @@ const ChildCard: React.FC<{
       <div className="flex items-center mt-6">
         <button
           onClick={handleFavoriteToggle}
-          className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          className={`p-3 border border-gray-300 rounded-lg transition-colors${
+            user?.role === UserRole.MEMBER
+              ? "border-gray-300 hover:bg-red-50 cursor-pointer"
+              : "border-gray-200 bg-gray-100 text-gray-400"
+          }`}
+          disabled={user?.role !== UserRole.MEMBER}
         >
           {isFavorite ? (
             <StarSolid className="w-6 h-6 text-yellow-500" />
           ) : (
-            <StarOutline className="w-6 h-6 text-gray-600 hover:text-yellow-400" />
+            <StarOutline
+              className={`w-6 h-6 ${
+                user?.role === UserRole.MEMBER
+                  ? "text-gray-600 hover:text-yellow-400"
+                  : "text-gray-300"
+              }`}
+            />
           )}
         </button>
 
@@ -172,9 +205,18 @@ const ChildCard: React.FC<{
 
         <button
           onClick={() => {}}
-          className="p-3 border border-gray-300 rounded-lg hover:bg-red-50 transition-colors ml-20"
+          disabled={user?.role !== UserRole.MEMBER}
+          className={`p-3 border border-gray-300 rounded-lg transition-colors ml-20 ${
+            user?.role === UserRole.MEMBER
+              ? "hover:bg-red-50 cursor-pointer"
+              : "bg-gray-100 text-gray-400"
+          }`}
         >
-          <TrashIcon className="w-6 h-6 text-gray-600" />
+          <TrashIcon
+            className={`w-6 h-6 ${
+              user?.role === UserRole.MEMBER ? "text-gray-600" : "text-gray-300"
+            }`}
+          />
         </button>
       </div>
     </div>

@@ -264,3 +264,13 @@ export const getHistoryChildren = (userId: number, history: History) => {
     method: "GET",
   });
 };
+
+// 間取り生成リクエスト
+
+// 間取り生成ステータス確認
+
+// 間取り生成結果取得
+
+// プランお気に入り登録/解除
+
+// プラン削除

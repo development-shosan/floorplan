@@ -58,12 +58,19 @@ export interface History {
   conditions: Conditions; // 顧客の希望条件
 }
 
+export interface Attributes {
+  ldk?: number; // LDK
+  masterBedroom?: number; // 主寝室
+  childrensRoom?: number; // 子供部屋
+  totalFloorArea?: number; // 延床面積
+}
+
 export interface HistoryChildren {
   id: number; // 固有ID
   historyParentId: number; // 親ID
   patternName: string; // 間取りパターン詳細情報
   floorplanData: FloorPlanData; // 間取り図JSONデータ
-  attributes?: string[]; // 属性
+  attributes?: Attributes; // 属性
   isPatternFavorite: boolean; // お気に入り
   tag: string; // タグ（,区切り）
   isDownloaded: boolean; // ダウンロード済み

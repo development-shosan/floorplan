@@ -49,6 +49,10 @@ const Header: React.FC<HeaderProps> = ({
 
   const menuItems: MenuItem[] = [
     {
+      label: "間取り生成",
+      roles: [UserRole.MEMBER],
+    },
+    {
       label: "対応履歴",
       roles: [UserRole.SYSTEM_ADMIN, UserRole.COMPANY_ADMIN, UserRole.MEMBER],
     },
