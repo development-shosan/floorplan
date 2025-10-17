@@ -129,32 +129,25 @@ const ChildCard: React.FC<{
         )}
       </div>
       <div className="flex flex-col gap-y-2 text-sm">
-        {/* LDK */}
+        {/* 1階面積 */}
         <div className="flex justify-between">
-          <div className="text-gray-500">LDK:</div>
+          <div className="text-gray-500">1階面積:</div>
           <div className="text-right font-medium">
-            {child.attributes?.ldk ?? null}帖
+            {`${child.floorplanData.first_floor_area ?? null} m\u00b2`}
           </div>
         </div>
-        {/* 主寝室 */}
+        {/* 2階面積 */}
         <div className="flex justify-between">
-          <div className="text-gray-500">主寝室:</div>
+          <div className="text-gray-500">2階面積:</div>
           <div className="text-right font-medium">
-            {child.attributes?.masterBedroom ?? null}帖
-          </div>
-        </div>
-        {/* 子供部屋 */}
-        <div className="flex justify-between">
-          <div className="text-gray-500">子供部屋:</div>
-          <div className="text-right font-medium">
-            {child.attributes?.childrensRoom ?? null}帖
+            {`${child.floorplanData.second_floor_area ?? null} m\u00b2`}
           </div>
         </div>
         {/* 延床面積 */}
         <div className="flex justify-between">
           <div className="text-gray-500">延床面積:</div>
           <div className="text-right font-medium">
-            {child.attributes?.totalFloorArea ?? null}坪
+            {`${child.floorplanData.total_floor_area ?? null} m\u00b2`}
           </div>
         </div>
       </div>
