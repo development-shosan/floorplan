@@ -128,16 +128,35 @@ const ChildCard: React.FC<{
           </div>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-        {child.attributes?.map((attr, index) => {
-          const [label, value] = attr.split(":").map((s) => s.trim());
-          return (
-            <React.Fragment key={index}>
-              <div className="text-gray-500">{label}:</div>
-              <div className="text-right font-medium">{value}</div>
-            </React.Fragment>
-          );
-        })}
+      <div className="flex flex-col gap-y-2 text-sm">
+        {/* LDK */}
+        <div className="flex justify-between">
+          <div className="text-gray-500">LDK:</div>
+          <div className="text-right font-medium">
+            {child.attributes?.ldk ?? null}帖
+          </div>
+        </div>
+        {/* 主寝室 */}
+        <div className="flex justify-between">
+          <div className="text-gray-500">主寝室:</div>
+          <div className="text-right font-medium">
+            {child.attributes?.masterBedroom ?? null}帖
+          </div>
+        </div>
+        {/* 子供部屋 */}
+        <div className="flex justify-between">
+          <div className="text-gray-500">子供部屋:</div>
+          <div className="text-right font-medium">
+            {child.attributes?.childrensRoom ?? null}帖
+          </div>
+        </div>
+        {/* 延床面積 */}
+        <div className="flex justify-between">
+          <div className="text-gray-500">延床面積:</div>
+          <div className="text-right font-medium">
+            {child.attributes?.totalFloorArea ?? null}坪
+          </div>
+        </div>
       </div>
       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
         {child.tag
