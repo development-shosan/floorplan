@@ -1,5 +1,5 @@
 import { CompanyFormData } from "@/constants/company";
-import { History } from "@/constants/history";
+import { History, HistoryChildren } from "@/constants/history";
 import { UserFormData } from "@/constants/user";
 import { LoginResponse } from "@/hooks/userContext";
 import { jwtDecode } from "jwt-decode";
@@ -97,6 +97,8 @@ async function fetchApi(path: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     switch (response.status) {
+      case 204:
+        throw new Error("⚠️ エラー: No Content (204)");
       case 400:
         throw new Error("⚠️ エラー: 不正なリクエスト (400)");
       case 401:
@@ -272,5 +274,19 @@ export const getHistoryChildren = (userId: number, history: History) => {
 // 間取り生成結果取得
 
 // プランお気に入り登録/解除
+export const togglePlanFavorite = (child: HistoryChildren) => {
+  const { id } = child;
+  const planId = id;
+  return fetchApi(`/api/v1/floorplans/plans/${planId}/favorite`, {
+    method: "PUT",
+  });
+};
 
 // プラン削除
+export const deletePlan = (child: HistoryChildren) => {
+  const { id } = child;
+  const planId = id;
+  return fetchApi(`/api/v1/floorplans/plans/${planId}`, {
+    method: "DELETE",
+  });
+};

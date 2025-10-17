@@ -9,18 +9,20 @@ import FloorPlanViewer from "./FloorPlanViewer";
 import { TrashIcon } from "@heroicons/react/24/solid";
 import { LoginResponse, useUser } from "@/hooks/userContext";
 import { UserRole } from "@/constants/roles";
-import { getHistoryChildren } from "@/lib/api";
+import { deletePlan, getHistoryChildren, togglePlanFavorite } from "@/lib/api";
 
 interface HistoryChildProps {
   history: History;
   onBack: () => void;
   onDetailClick: (child: HistoryChildren) => void;
+  setActiveTab: (tab: string) => void;
 }
 
 const HistoryChild: React.FC<HistoryChildProps> = ({
   history,
   onBack,
   onDetailClick,
+  setActiveTab,
 }) => {
   const { user } = useUser();
 
@@ -48,6 +50,16 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
     fetchHistoryChildren();
   }, [fetchHistoryChildren]);
 
+  // 間取り生成に画面遷移
+  const handleCreateNew = () => {
+    setActiveTab("間取り生成");
+  };
+
+  // 間取り生成開始
+  const handleRegenerate = () => {
+    console.log("再生成ボタンクリック");
+  };
+
   return (
     <div>
       {loading ? (
@@ -70,8 +82,12 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
             </h1>
             <span className="text-gray-500 text-sm border border-gray-300 px-3 py-1 rounded-full leading-tight inline-block text-left">
               {`営業担当：${history.userName}`}
-              <br />
-              {`顧客名：${history.customerName}`}
+              {user?.role !== UserRole.SYSTEM_ADMIN && (
+                <>
+                  <br />
+                  {`顧客名：${history.customerName}`}
+                </>
+              )}
             </span>
           </div>
 
@@ -82,6 +98,23 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
             </p>
           </div>
 
+          {user?.role === UserRole.MEMBER && (
+            <div className="flex justify-center items-center gap-4 p-6 mb-8 bg-white">
+              <button
+                onClick={handleCreateNew}
+                className="flex items-center justify-center bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors text-lg"
+              >
+                + 新規生成
+              </button>
+              <button
+                onClick={handleRegenerate}
+                className="flex items-center justify-center bg-gray-100 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors text-lg"
+              >
+                再生成
+              </button>
+            </div>
+          )}
+
           <div className="space-y-6">
             {historyChildren.map((child, index) => (
               <ChildCard
@@ -89,6 +122,8 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
                 child={child}
                 user={user}
                 onDetailClick={onDetailClick}
+                setHistoryChildren={setHistoryChildren}
+                historyChildren={historyChildren}
               />
             ))}
           </div>
@@ -102,19 +137,58 @@ const ChildCard: React.FC<{
   child: HistoryChildren;
   user: LoginResponse | null;
   onDetailClick: (child: HistoryChildren) => void;
-}> = ({ child, user, onDetailClick }) => {
-  const [isFavorite, setIsFavorite] = React.useState(
-    child.isPatternFavorite ?? false
-  );
+  setHistoryChildren: React.Dispatch<React.SetStateAction<HistoryChildren[]>>;
+  historyChildren: HistoryChildren[];
+}> = ({ child, user, onDetailClick, setHistoryChildren, historyChildren }) => {
+  // プランお気に入り登録/解除API
+  const handleFavoriteToggle = async (child: HistoryChildren) => {
+    try {
+      await togglePlanFavorite(child);
+      setHistoryChildren(
+        historyChildren.map((c) =>
+          c.id === child.id
+            ? { ...c, isPatternFavorite: !c.isPatternFavorite }
+            : c
+        )
+      );
+    } catch (error) {
+      console.error(error);
 
-  useEffect(() => {
-    setIsFavorite(child.isPatternFavorite ?? false);
-  }, [child]);
+      let message: string = "不明なエラーが発生しました";
 
-  const handleFavoriteToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newState = !isFavorite;
-    setIsFavorite(newState);
+      if (error instanceof Error) {
+        message = error.message.includes("(404)")
+          ? "指定されたplanIdが見つかりません"
+          : error.message;
+      }
+
+      alert(message);
+    }
+  };
+
+  // プラン削除API
+  const handleDelete = async (child: HistoryChildren) => {
+    const confirmDelete = window.confirm(
+      "このプランを削除してもよろしいですか？"
+    );
+    if (!confirmDelete) return;
+
+    try {
+      await deletePlan(child);
+      setHistoryChildren(historyChildren.filter((c) => c.id !== child.id));
+    } catch (error) {
+      console.error(error);
+
+      let message: string = "不明なエラーが発生しました";
+
+      if (error instanceof Error) {
+        message = error.message.includes("(404)")
+          ? "指定されたplanIdが見つかりません"
+          : error.message;
+      }
+
+      alert(message);
+    }
   };
 
   return (
@@ -131,32 +205,25 @@ const ChildCard: React.FC<{
       </div>
 
       <div className="flex flex-col gap-y-2 text-sm">
-        {/* LDK */}
+        {/* 1階面積 */}
         <div className="flex justify-between">
           <div className="text-gray-500">LDK:</div>
           <div className="text-right font-medium">
-            {child.attributes?.ldk ?? null}帖
+            {`${child.floorplanData.first_floor_area ?? null} m\u00b2`}
           </div>
         </div>
-        {/* 主寝室 */}
+        {/* 2階面積 */}
         <div className="flex justify-between">
           <div className="text-gray-500">主寝室:</div>
           <div className="text-right font-medium">
-            {child.attributes?.masterBedroom ?? null}帖
-          </div>
-        </div>
-        {/* 子供部屋 */}
-        <div className="flex justify-between">
-          <div className="text-gray-500">子供部屋:</div>
-          <div className="text-right font-medium">
-            {child.attributes?.childrensRoom ?? null}帖
+            {`${child.floorplanData.second_floor_area ?? null} m\u00b2`}
           </div>
         </div>
         {/* 延床面積 */}
         <div className="flex justify-between">
           <div className="text-gray-500">延床面積:</div>
           <div className="text-right font-medium">
-            {child.attributes?.totalFloorArea ?? null}坪
+            {`${child.floorplanData.total_floor_area ?? null} m\u00b2`}
           </div>
         </div>
       </div>
@@ -175,7 +242,7 @@ const ChildCard: React.FC<{
       </div>
       <div className="flex items-center mt-6">
         <button
-          onClick={handleFavoriteToggle}
+          onClick={() => handleFavoriteToggle(child)}
           className={`p-3 border border-gray-300 rounded-lg transition-colors${
             user?.role === UserRole.MEMBER
               ? "border-gray-300 hover:bg-red-50 cursor-pointer"
@@ -183,7 +250,7 @@ const ChildCard: React.FC<{
           }`}
           disabled={user?.role !== UserRole.MEMBER}
         >
-          {isFavorite ? (
+          {child.isPatternFavorite ? (
             <StarSolid className="w-6 h-6 text-yellow-500" />
           ) : (
             <StarOutline
@@ -204,7 +271,9 @@ const ChildCard: React.FC<{
         </button>
 
         <button
-          onClick={() => {}}
+          onClick={() => {
+            handleDelete(child);
+          }}
           disabled={user?.role !== UserRole.MEMBER}
           className={`p-3 border border-gray-300 rounded-lg transition-colors ml-20 ${
             user?.role === UserRole.MEMBER

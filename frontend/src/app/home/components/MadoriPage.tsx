@@ -59,11 +59,11 @@ interface RequestBody {
   title: string;
   clientName: string;
   layout_conditions: {
-    family_composition: { value: number; unit: "people" };
+    family_composition: { value: string; unit: "people" };
     number_of_floors: { value: string };
-    frontage: { value: number; unit: "p" };
-    depth: { value: number; unit: "p" };
-    desired_LDK_area: { value: number; unit: "tatami" };
+    frontage: { value: string; unit: "pit" };
+    depth: { value: string; unit: "pit" };
+    desired_LDK_area: { value: string; unit: "tatami" };
     number_of_rooms: { value: string; unit: "rooms" };
     number_of_toilets: { value: string; unit: "units" };
     commitment_flow_lines: { value: string; unit: "text" };
@@ -150,18 +150,18 @@ const MadoriPage: React.FC = () => {
       clientName: data.customerName,
       layout_conditions: {
         family_composition: {
-          value: parseFloat(data.familyComposition) || 0,
+          value: data.familyComposition,
           unit: "people",
         },
         number_of_floors: { value: data.floors },
-        frontage: { value: parseFloat(data.entrance) || 0, unit: "p" },
-        depth: { value: parseFloat(data.orientation) || 0, unit: "p" },
+        frontage: { value: data.entrance, unit: "pit" },
+        depth: { value: data.orientation, unit: "pit" },
         desired_LDK_area: {
-          value: parseFloat(data.ldkSize) || 0,
+          value: data.ldkSize,
           unit: "tatami",
         },
-        number_of_rooms: { value: String(data.rooms), unit: "rooms" },
-        number_of_toilets: { value: String(data.toiletCount), unit: "units" },
+        number_of_rooms: { value: data.rooms, unit: "rooms" },
+        number_of_toilets: { value: data.toiletCount, unit: "units" },
         commitment_flow_lines: { value: data.commitment, unit: "text" },
       },
     };

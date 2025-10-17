@@ -12,6 +12,9 @@ export interface FloorData {
 }
 
 export interface FloorPlanData {
+  first_floor_area: number;
+  second_floor_area: number;
+  total_floor_area: number;
   "1": FloorData;
   "2"?: FloorData;
 }

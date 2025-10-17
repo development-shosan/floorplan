@@ -19,9 +19,13 @@ import { getHistoryList } from "@/lib/api";
 
 interface HistoryPageProps {
   resetSignal?: number;
+  setActiveTab: (tab: string) => void;
 }
 
-const HistoryPage: React.FC<HistoryPageProps> = ({ resetSignal }) => {
+const HistoryPage: React.FC<HistoryPageProps> = ({
+  resetSignal,
+  setActiveTab,
+}) => {
   const { user } = useUser();
 
   const [histories, setHistories] = useState<History[]>([]);
@@ -210,6 +214,7 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ resetSignal }) => {
       ) : isChildOpen && selectedHistory ? (
         <HistoryChild
           history={selectedHistory}
+          setActiveTab={setActiveTab}
           onBack={handleCloseChild}
           onDetailClick={handleGoToDetail}
         />

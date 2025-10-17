@@ -41,7 +41,9 @@ const Home: React.FC = () => {
 
   const componentMap: Record<string, React.ReactNode> = {
     間取り生成: <MadoriPage />,
-    対応履歴: <HistoryPage resetSignal={resetSignal} />,
+    対応履歴: (
+      <HistoryPage resetSignal={resetSignal} setActiveTab={handleTabChange} />
+    ),
     会社管理: <CompanyManagementPage resetSignal={resetSignal} />,
     ユーザー管理: <UserManagementPage resetSignal={resetSignal} />,
     お問い合わせ: <ContactPage />,
