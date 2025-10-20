@@ -270,6 +270,11 @@ export const getHistoryChildren = (userId: number, history: History) => {
 // 間取り生成リクエスト
 
 // 間取り生成ステータス確認
+export const getMadoriStatus = (jobId: string) => {
+  return fetchApi(`/api/v1/floorplans/status/${jobId}`, {
+    method: "GET",
+  });
+};
 
 // 間取り生成結果取得
 

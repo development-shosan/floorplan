@@ -14,7 +14,6 @@ import { useUser } from "@/hooks/userContext";
 import { UserRole } from "@/constants/roles";
 import HistoryChild from "./HistoryChild";
 import HistoryDetail from "./HistoryDetail";
-import HistoryPreview from "./HistoryPreview";
 import { getHistoryList } from "@/lib/api";
 
 interface HistoryPageProps {
@@ -45,7 +44,6 @@ const HistoryPage: React.FC<HistoryPageProps> = ({
 
   const [isChildOpen, setIsChildOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
 
@@ -82,7 +80,6 @@ const HistoryPage: React.FC<HistoryPageProps> = ({
     setSelectedChild(null);
     setIsChildOpen(false);
     setIsDetailOpen(false);
-    setIsPreviewOpen(false);
     setSearch("");
     setSearchInput("");
     setStartDate("");
@@ -168,23 +165,11 @@ const HistoryPage: React.FC<HistoryPageProps> = ({
     setSelectedChild(child);
     setIsChildOpen(false);
     setIsDetailOpen(true);
-    setIsPreviewOpen(false);
   };
 
   const handleCloseDetail = () => {
     setIsDetailOpen(false);
     setIsChildOpen(true);
-  };
-
-  const handleGoToPreview = (child: HistoryChildren) => {
-    setSelectedChild(child);
-    setIsDetailOpen(false);
-    setIsPreviewOpen(true);
-  };
-
-  const handleClosePreview = () => {
-    setIsPreviewOpen(false);
-    setIsDetailOpen(true);
   };
 
   const totalPages = Math.ceil(sortedHistories.length / itemsPerPage);
@@ -198,18 +183,11 @@ const HistoryPage: React.FC<HistoryPageProps> = ({
     <div>
       {loading ? (
         <p>{"ロード中..."}</p>
-      ) : isPreviewOpen && selectedHistory && selectedChild ? (
-        <HistoryPreview
-          history={selectedHistory}
-          child={selectedChild}
-          onBack={handleClosePreview}
-        />
       ) : isDetailOpen && selectedHistory && selectedChild ? (
         <HistoryDetail
           history={selectedHistory}
           child={selectedChild}
           onBack={handleCloseDetail}
-          onPreviewClick={handleGoToPreview}
         />
       ) : isChildOpen && selectedHistory ? (
         <HistoryChild

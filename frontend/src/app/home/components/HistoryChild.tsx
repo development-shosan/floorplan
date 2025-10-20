@@ -5,11 +5,12 @@ import { History, HistoryChildren } from "@/constants/history";
 import { ArrowLeftIcon, HomeIcon } from "@heroicons/react/16/solid";
 import { StarIcon as StarOutline } from "@heroicons/react/24/outline";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
-import FloorPlanViewer from "./FloorPlanViewer";
 import { TrashIcon } from "@heroicons/react/24/solid";
 import { LoginResponse, useUser } from "@/hooks/userContext";
 import { UserRole } from "@/constants/roles";
 import { deletePlan, getHistoryChildren, togglePlanFavorite } from "@/lib/api";
+import LoadingView from "./LoadingView";
+import FloorPlanViewer from "./FloorPlanViewer";
 
 interface HistoryChildProps {
   history: History;
@@ -27,7 +28,8 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
   const { user } = useUser();
 
   const [historyChildren, setHistoryChildren] = useState<HistoryChildren[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [showLoading, setShowLoading] = useState(false);
 
   // 対応履歴詳細API
   const fetchHistoryChildren = React.useCallback(async () => {
@@ -58,12 +60,17 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
   // 間取り生成開始
   const handleRegenerate = () => {
     console.log("再生成ボタンクリック");
+    setShowLoading(true);
   };
 
   return (
-    <div>
+    <div className={`bg-gray-50 ${showLoading ? "h-[80vh]" : "min-h-screen"}`}>
       {loading ? (
         <p>{"ロード中..."}</p>
+      ) : showLoading ? (
+        <div className="max-w-6xl mx-auto px-8 py-8">
+          <LoadingView jobId="dummy-job-id" setShowLoading={setShowLoading} />
+        </div>
       ) : (
         <div className="p-6 w-[calc(100vw-25vw)] bg-white rounded-lg shadow-md mx-auto">
           <button

@@ -18,6 +18,7 @@ import {
 } from "@heroicons/react/16/solid";
 import { useUser } from "@/hooks/userContext";
 import { HomeIcon } from "@heroicons/react/20/solid";
+import LoadingView from "./LoadingView";
 
 const Header: React.FC = () => {
   const { user } = useUser();
@@ -79,6 +80,7 @@ interface UnitInputFieldProps {
   placeholder?: string;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
   inputClass: string;
+  error?: string;
 }
 
 const UnitInputField: React.FC<UnitInputFieldProps> = ({
@@ -90,6 +92,7 @@ const UnitInputField: React.FC<UnitInputFieldProps> = ({
   placeholder,
   setForm,
   inputClass,
+  error,
 }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const numericValue = e.target.value.replace(/[^\d.]/g, "");
@@ -117,6 +120,7 @@ const UnitInputField: React.FC<UnitInputFieldProps> = ({
           </span>
         )}
       </div>
+      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
     </div>
   );
 };
@@ -136,6 +140,8 @@ const MadoriPage: React.FC = () => {
   };
 
   const [form, setForm] = useState<FormState>(initialForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showLoading, setShowLoading] = useState(false);
 
   const pToMm = (pStr: string): string => {
     const pVal = parseFloat(pStr);
@@ -167,9 +173,56 @@ const MadoriPage: React.FC = () => {
     };
   };
 
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // タイトル
+    if (!form.title.trim()) newErrors.title = "タイトルは必須です";
+
+    // 顧客名
+    if (!form.customerName.trim()) newErrors.customerName = "顧客名は必須です";
+
+    // ご家族構成
+    const family = Number(form.familyComposition);
+    if (!form.familyComposition.trim() || isNaN(family))
+      newErrors.familyComposition = "ご家族構成を入力してください";
+    else if (family < 1 || family > 20)
+      newErrors.familyComposition = "ご家族構成は1〜20人で入力してください";
+
+    // 間口
+    const entrance = Number(form.entrance);
+    if (!form.entrance.trim() || isNaN(entrance))
+      newErrors.entrance = "間口を入力してください";
+    else if (entrance < 1 || entrance > 100)
+      newErrors.entrance = "間口は1〜100 pitで入力してください";
+
+    // 奥行き
+    const orientation = Number(form.orientation);
+    if (!form.orientation.trim() || isNaN(orientation))
+      newErrors.orientation = "奥行きを入力してください";
+    else if (orientation < 1 || orientation > 100)
+      newErrors.orientation = "奥行きは1〜100 pitで入力してください";
+
+    // LDK希望面積
+    const ldk = Number(form.ldkSize);
+    if (!form.ldkSize.trim() || isNaN(ldk))
+      newErrors.ldkSize = "LDK希望面積を入力してください";
+    else if (ldk < 1 || ldk > 100)
+      newErrors.ldkSize = "LDK希望面積は1〜100帖で入力してください";
+
+    // 動線のこだわり
+    if (!form.commitment.trim())
+      newErrors.commitment = "動線のこだわりは必須です";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleGenerateClick = () => {
+    if (!validate()) return;
     const body = createRequestBody(form);
     console.log("間取り生成リクエストボディ:", JSON.stringify(body, null, 2));
+    setShowLoading(true);
   };
 
   const inputClass =
@@ -201,191 +254,242 @@ const MadoriPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`bg-gray-50 ${showLoading ? "h-[80vh]" : "min-h-screen"}`}>
       <Header />
       <main className="max-w-6xl mx-auto px-8 py-8">
-        <section className="bg-white p-6 shadow-md rounded-lg mb-12">
-          <h2 className="text-xl font-bold border-gray-700 mb-6 flex items-center">
-            <AdjustmentsHorizontalIcon className="w-6 h-6 mr-2" />
-            ご要望ヒアリング
-          </h2>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-            <UnitInputField
-              name="title"
-              label="タイトル"
-              icon={PencilSquareIcon}
-              value={form.title}
-              placeholder="例: 佐藤邸 間取りプラン"
-              unit=""
-              setForm={setForm}
-              inputClass={inputClass}
-            />
-            <UnitInputField
-              name="customerName"
-              label="顧客名"
-              icon={UserIcon}
-              value={form.customerName}
-              placeholder="例: 佐藤 太郎"
-              unit=""
-              setForm={setForm}
-              inputClass={inputClass}
-            />
-            <UnitInputField
-              name="familyComposition"
-              label="ご家族構成"
-              icon={UsersIcon}
-              value={form.familyComposition}
-              unit="人"
-              placeholder="例: 4"
-              setForm={setForm}
-              inputClass={inputClass}
-            />
-            <div>
-              <label className="text-sm font-semibold text-gray-700 flex items-center mb-1">
-                <BuildingOffice2Icon className="w-4 h-4 mr-1 text-gray-500" />
-                階数
-              </label>
+        {showLoading ? (
+          <LoadingView jobId="dummy-job-id" setShowLoading={setShowLoading} />
+        ) : (
+          <>
+            <section className="bg-white p-6 shadow-md rounded-lg mb-12">
+              <h2 className="text-xl font-bold border-gray-700 mb-6 flex items-center">
+                <AdjustmentsHorizontalIcon className="w-6 h-6 mr-2" />
+                ご要望ヒアリング
+              </h2>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                <UnitInputField
+                  name="title"
+                  label="タイトル"
+                  icon={PencilSquareIcon}
+                  value={form.title}
+                  placeholder="例: 佐藤邸 間取りプラン"
+                  unit=""
+                  setForm={setForm}
+                  inputClass={inputClass}
+                  error={errors.title}
+                />
+                <UnitInputField
+                  name="customerName"
+                  label="顧客名"
+                  icon={UserIcon}
+                  value={form.customerName}
+                  placeholder="例: 佐藤 太郎"
+                  unit=""
+                  setForm={setForm}
+                  inputClass={inputClass}
+                  error={errors.customerName}
+                />
+                <UnitInputField
+                  name="familyComposition"
+                  label="ご家族構成"
+                  icon={UsersIcon}
+                  value={form.familyComposition}
+                  unit="人"
+                  placeholder="例: 4"
+                  setForm={setForm}
+                  inputClass={inputClass}
+                  error={errors.familyComposition}
+                />
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 flex items-center mb-1">
+                    <BuildingOffice2Icon className="w-4 h-4 mr-1 text-gray-500" />
+                    階数
+                  </label>
 
-              <select
-                name="floors"
+                  <select
+                    name="floors"
+                    value={form.floors}
+                    onChange={(e) =>
+                      handleSelectChange("floors", e.target.value)
+                    }
+                    className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="1">1階建て</option>
+                    <option value="2">2階建て</option>
+                  </select>
+                </div>
+
+                <div>
+                  <UnitInputField
+                    name="entrance"
+                    label="間口（最小単位は0.25）"
+                    icon={ArrowsRightLeftIcon}
+                    value={form.entrance}
+                    unit="pit"
+                    placeholder="例: 20"
+                    setForm={setForm}
+                    inputClass={inputClass}
+                    error={errors.entrance}
+                  />
+                  <p className="mt-1 text-xs text-gray-500 text-right pr-1">
+                    （{pToMm(form.entrance)} mm）
+                  </p>
+                </div>
+
+                <div>
+                  <UnitInputField
+                    name="orientation"
+                    label="奥行き"
+                    icon={ArrowsUpDownIcon}
+                    value={form.orientation}
+                    unit="pit"
+                    placeholder="例: 12"
+                    setForm={setForm}
+                    inputClass={inputClass}
+                    error={errors.orientation}
+                  />
+                  <p className="mt-1 text-xs text-gray-500 text-right pr-1">
+                    （{pToMm(form.orientation)} mm）
+                  </p>
+                </div>
+
+                <UnitInputField
+                  name="ldkSize"
+                  label="LDK希望面積"
+                  icon={Squares2X2Icon}
+                  value={form.ldkSize}
+                  unit="帖"
+                  placeholder="例: 18"
+                  setForm={setForm}
+                  inputClass={inputClass}
+                  error={errors.ldkSize}
+                />
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 flex items-center mb-1">
+                    <HomeModernIcon className="w-4 h-4 mr-1 text-gray-500" />
+                    居室数
+                  </label>
+                  <select
+                    name="rooms"
+                    value={form.rooms}
+                    onChange={(e) =>
+                      handleSelectChange("rooms", e.target.value)
+                    }
+                    className={`${inputClass} bg-white`}
+                  >
+                    <option value="1">1 室</option>
+                    <option value="2">2 室</option>
+                    <option value="3">3 室</option>
+                    <option value="4">4 室</option>
+                    <option value="5">5 室</option>
+                  </select>
+                  {errors.rooms && (
+                    <p className="text-red-500 text-sm mt-1">{errors.rooms}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 flex items-center mb-1">
+                    <WrenchScrewdriverIcon className="w-4 h-4 mr-1 text-gray-500" />
+                    トイレ
+                  </label>
+                  <select
+                    name="toiletCount"
+                    value={form.toiletCount}
+                    onChange={(e) =>
+                      handleSelectChange("toiletCount", e.target.value)
+                    }
+                    className={`${inputClass} bg-white`}
+                  >
+                    <option value="1">1 個</option>
+                    <option value="2">2 個</option>
+                  </select>
+                  {errors.toiletCount && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.toiletCount}
+                    </p>
+                  )}
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm font-semibold text-gray-700 block mb-1">
+                    動線のこだわり
+                  </label>
+                  <textarea
+                    name="commitment"
+                    value={form.commitment}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        commitment: e.target.value,
+                      }))
+                    }
+                    rows={3}
+                    placeholder="例: 玄関からキッチンまでの動線を短く"
+                    className={`${inputClass} resize-none`}
+                  />
+                  {errors.commitment && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.commitment}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                className="mt-8 w-full bg-gray-800 text-white font-bold py-3 rounded-md hover:bg-gray-700 transition duration-150"
+                onClick={handleGenerateClick}
+              >
+                間取り生成開始
+              </button>
+            </section>
+
+            <section className="bg-white p-6 shadow-md rounded-lg">
+              <h2 className="text-xl font-bold border-gray-700 mb-6 flex items-center">
+                <ListBulletIcon className="w-6 h-6 mr-2" />
+                入力内容確認
+              </h2>
+              <ConfirmationItem
+                label="プロジェクトタイトル:"
+                value={form.title}
+              />
+              <ConfirmationItem label="顧客名:" value={form.customerName} />
+              <ConfirmationItem
+                label="ご家族構成:"
+                value={form.familyComposition}
+                unit="人"
+              />
+              <ConfirmationItem
+                label="階数:"
                 value={form.floors}
-                onChange={(e) => handleSelectChange("floors", e.target.value)}
-                className="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option value="1">1階建て</option>
-                <option value="2">2階建て</option>
-              </select>
-            </div>
-
-            <div>
-              <UnitInputField
-                name="entrance"
-                label="間口（通り芯間は1.82倍）"
-                icon={ArrowsRightLeftIcon}
+                unit="階建まで"
+              />
+              <ConfirmationItem
+                label="間口:"
                 value={form.entrance}
-                unit="p"
-                placeholder="例: 20"
-                setForm={setForm}
-                inputClass={inputClass}
+                unit="pit"
               />
-              <p className="mt-1 text-xs text-gray-500 text-right pr-1">
-                （{pToMm(form.entrance)} mm）
-              </p>
-            </div>
-
-            <div>
-              <UnitInputField
-                name="orientation"
-                label="奥行き"
-                icon={ArrowsUpDownIcon}
+              <ConfirmationItem
+                label="奥行き:"
                 value={form.orientation}
-                unit="p"
-                placeholder="例: 12"
-                setForm={setForm}
-                inputClass={inputClass}
+                unit="pit"
               />
-              <p className="mt-1 text-xs text-gray-500 text-right pr-1">
-                （{pToMm(form.orientation)} mm）
-              </p>
-            </div>
-
-            <UnitInputField
-              name="ldkSize"
-              label="LDK希望面積"
-              icon={Squares2X2Icon}
-              value={form.ldkSize}
-              unit="帖"
-              placeholder="例: 18"
-              setForm={setForm}
-              inputClass={inputClass}
-            />
-            <div>
-              <label className="text-sm font-semibold text-gray-700 flex items-center mb-1">
-                <HomeModernIcon className="w-4 h-4 mr-1 text-gray-500" />
-                部屋数
-              </label>
-              <select
-                name="rooms"
-                value={form.rooms}
-                onChange={(e) => handleSelectChange("rooms", e.target.value)}
-                className={`${inputClass} bg-white`}
-              >
-                <option value="1">1 室</option>
-                <option value="2">2 室</option>
-                <option value="3">3 室</option>
-                <option value="4">4 室</option>
-                <option value="5">5 室</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-semibold text-gray-700 flex items-center mb-1">
-                <WrenchScrewdriverIcon className="w-4 h-4 mr-1 text-gray-500" />
-                トイレ
-              </label>
-              <select
-                name="toiletCount"
+              <ConfirmationItem
+                label="LDK希望面積:"
+                value={form.ldkSize}
+                unit="帖"
+              />
+              <ConfirmationItem label="居室数:" value={form.rooms} unit="室" />
+              <ConfirmationItem
+                label="トイレ:"
                 value={form.toiletCount}
-                onChange={(e) =>
-                  handleSelectChange("toiletCount", e.target.value)
-                }
-                className={`${inputClass} bg-white`}
-              >
-                <option value="1">1 個</option>
-                <option value="2">2 個</option>
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="text-sm font-semibold text-gray-700 block mb-1">
-                動線のこだわり
-              </label>
-              <textarea
-                name="commitment"
-                value={form.commitment}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, commitment: e.target.value }))
-                }
-                rows={3}
-                placeholder="例: 玄関からキッチンまでの動線を短く"
-                className={`${inputClass} resize-none`}
+                unit="個"
               />
-            </div>
-          </div>
-          <button
-            className="mt-8 w-full bg-gray-800 text-white font-bold py-3 rounded-md hover:bg-gray-700 transition duration-150"
-            onClick={handleGenerateClick}
-          >
-            間取り生成開始
-          </button>
-        </section>
-
-        <section className="bg-white p-6 shadow-md rounded-lg">
-          <h2 className="text-xl font-bold border-gray-700 mb-6 flex items-center">
-            <ListBulletIcon className="w-6 h-6 mr-2" />
-            入力内容確認
-          </h2>
-          <ConfirmationItem label="プロジェクトタイトル:" value={form.title} />
-          <ConfirmationItem label="顧客名:" value={form.customerName} />
-          <ConfirmationItem
-            label="ご家族構成:"
-            value={form.familyComposition}
-            unit="人"
-          />
-          <ConfirmationItem label="階数:" value={form.floors} />
-          <ConfirmationItem label="間口:" value={form.entrance} unit="p" />
-          <ConfirmationItem label="奥行き:" value={form.orientation} unit="p" />
-          <ConfirmationItem
-            label="LDK希望面積:"
-            value={form.ldkSize}
-            unit="帖"
-          />
-          <ConfirmationItem label="居室数:" value={form.rooms} />
-          <ConfirmationItem label="トイレ:" value={form.toiletCount} />
-          <ConfirmationItem
-            label="動線のこだわり:"
-            value={form.commitment}
-            large={true}
-          />
-        </section>
+              <ConfirmationItem
+                label="動線のこだわり:"
+                value={form.commitment}
+                large={true}
+              />
+            </section>
+          </>
+        )}
       </main>
     </div>
   );
