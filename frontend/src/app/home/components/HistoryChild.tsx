@@ -128,16 +128,28 @@ const ChildCard: React.FC<{
           </div>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-        {child.attributes?.map((attr, index) => {
-          const [label, value] = attr.split(":").map((s) => s.trim());
-          return (
-            <React.Fragment key={index}>
-              <div className="text-gray-500">{label}:</div>
-              <div className="text-right font-medium">{value}</div>
-            </React.Fragment>
-          );
-        })}
+      <div className="flex flex-col gap-y-2 text-sm">
+        {/* 1階面積 */}
+        <div className="flex justify-between">
+          <div className="text-gray-500">1階面積:</div>
+          <div className="text-right font-medium">
+            {`${child.floorplanData.first_floor_area ?? null} m\u00b2`}
+          </div>
+        </div>
+        {/* 2階面積 */}
+        <div className="flex justify-between">
+          <div className="text-gray-500">2階面積:</div>
+          <div className="text-right font-medium">
+            {`${child.floorplanData.second_floor_area ?? null} m\u00b2`}
+          </div>
+        </div>
+        {/* 延床面積 */}
+        <div className="flex justify-between">
+          <div className="text-gray-500">延床面積:</div>
+          <div className="text-right font-medium">
+            {`${child.floorplanData.total_floor_area ?? null} m\u00b2`}
+          </div>
+        </div>
       </div>
       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
         {child.tag

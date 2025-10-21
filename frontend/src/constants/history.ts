@@ -3,7 +3,7 @@ import { FloorPlanData } from "./floorPlan";
 interface Conditions {
   // ご家族構成
   family_composition: {
-    value: number;
+    value: string;
     unit: string;
   };
   // 階数
@@ -12,17 +12,17 @@ interface Conditions {
   };
   // 間口
   frontage: {
-    value: number;
+    value: string;
     unit: string;
   };
   // 奥行き
   depth: {
-    value: number;
+    value: string;
     unit: string;
   };
   // LDK希望面積
   desired_LDK_area: {
-    value: number;
+    value: string;
     unit: string;
   };
   // 居室数
@@ -63,7 +63,6 @@ export interface HistoryChildren {
   historyParentId: number; // 親ID
   patternName: string; // 間取りパターン詳細情報
   floorplanData: FloorPlanData; // 間取り図JSONデータ
-  attributes?: string[]; // 属性
   isPatternFavorite: boolean; // お気に入り
   tag: string; // タグ（,区切り）
   isDownloaded: boolean; // ダウンロード済み
