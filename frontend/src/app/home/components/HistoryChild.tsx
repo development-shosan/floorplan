@@ -8,35 +8,46 @@ import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import { TrashIcon } from "@heroicons/react/24/solid";
 import { LoginResponse, useUser } from "@/hooks/userContext";
 import { UserRole } from "@/constants/roles";
-import { deletePlan, getHistoryChildren, togglePlanFavorite } from "@/lib/api";
+import {
+  deletePlan,
+  getHistoryChildren,
+  regeneratePlan,
+  togglePlanFavorite,
+} from "@/lib/api";
 import LoadingView from "./LoadingView";
 import FloorPlanViewer from "./FloorPlanViewer";
+import HistoryDetail from "./HistoryDetail";
 
 interface HistoryChildProps {
   history: History;
-  onBack: () => void;
-  onDetailClick: (child: HistoryChildren) => void;
   setActiveTab: (tab: string) => void;
 }
 
 const HistoryChild: React.FC<HistoryChildProps> = ({
   history,
-  onBack,
-  onDetailClick,
   setActiveTab,
 }) => {
   const { user } = useUser();
 
+  const [selectedHistory, setSelectedHistory] = useState<History | null>(
+    history
+  );
   const [historyChildren, setHistoryChildren] = useState<HistoryChildren[]>([]);
+  const [selectedChild, setSelectedChild] = useState<HistoryChildren | null>(
+    null
+  );
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showLoading, setShowLoading] = useState(false);
+  const [loadingJobId, setLoadingJobId] = useState<string | null>(null);
+  const [complete, setComplete] = useState<boolean>(false);
 
-  // 対応履歴詳細API
   const fetchHistoryChildren = React.useCallback(async () => {
     try {
       if (!user) return;
 
       setLoading(true);
+      // 対応履歴詳細API
       const response = await getHistoryChildren(user.id, history);
       const data: HistoryChildren[] = response.historyChildren;
       setHistoryChildren(data);
@@ -52,29 +63,77 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
     fetchHistoryChildren();
   }, [fetchHistoryChildren]);
 
+  useEffect(() => {
+    if (complete) {
+      fetchHistoryChildren();
+      setComplete(false);
+    }
+  }, [complete, fetchHistoryChildren]);
+
+  const handleCloseDetail = () => {
+    setIsDetailOpen(false);
+    setSelectedChild(null);
+  };
+
+  const handleGoToDetail = (child: HistoryChildren) => {
+    setSelectedChild(child);
+    setIsDetailOpen(true);
+  };
+
   // 間取り生成に画面遷移
   const handleCreateNew = () => {
     setActiveTab("間取り生成");
   };
 
-  // 間取り生成開始
-  const handleRegenerate = () => {
-    console.log("再生成ボタンクリック");
-    setShowLoading(true);
+  // 間取り再生成
+  const handleRegenerate = async (history: History) => {
+    try {
+      setShowLoading(true);
+      // 間取り再生成API
+      const response = await regeneratePlan(history);
+      const jobId = response.jobId;
+
+      if (jobId) {
+        setLoadingJobId(jobId);
+      } else {
+        setShowLoading(false);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("間取り再生成に失敗しました");
+      setShowLoading(false);
+    }
   };
+
+  if (isDetailOpen && selectedHistory && selectedChild) {
+    return (
+      <HistoryDetail
+        history={history}
+        child={selectedChild}
+        onBack={handleCloseDetail}
+      />
+    );
+  }
 
   return (
     <div className={`bg-gray-50 ${showLoading ? "h-[80vh]" : "min-h-screen"}`}>
       {loading ? (
         <p>{"ロード中..."}</p>
-      ) : showLoading ? (
+      ) : showLoading && loadingJobId ? (
         <div className="max-w-6xl mx-auto px-8 py-8">
-          <LoadingView jobId="dummy-job-id" setShowLoading={setShowLoading} />
+          <LoadingView
+            jobId={loadingJobId}
+            setShowLoading={setShowLoading}
+            setComplete={setComplete}
+            setSelectedHistory={setSelectedHistory}
+          />
         </div>
       ) : (
         <div className="p-6 w-[calc(100vw-25vw)] bg-white rounded-lg shadow-md mx-auto">
           <button
-            onClick={onBack}
+            onClick={() => {
+              setActiveTab("対応履歴");
+            }}
             className="flex items-center text-gray mb-4 hover:underline"
           >
             <ArrowLeftIcon className="w-4 h-4 mr-1" />
@@ -114,7 +173,9 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
                 + 新規生成
               </button>
               <button
-                onClick={handleRegenerate}
+                onClick={() => {
+                  handleRegenerate(history);
+                }}
                 className="flex items-center justify-center bg-gray-100 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors text-lg"
               >
                 再生成
@@ -128,7 +189,7 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
                 key={index}
                 child={child}
                 user={user}
-                onDetailClick={onDetailClick}
+                onDetailClick={handleGoToDetail}
                 setHistoryChildren={setHistoryChildren}
                 historyChildren={historyChildren}
               />
@@ -200,7 +261,7 @@ const ChildCard: React.FC<{
 
   return (
     <div className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm">
-      <h2 className="text-xl font-semibold mb-4">{child.patternName}</h2>
+      <h2 className="text-xl font-semibold mb-4">{child.floorplanData.type}</h2>
       <div className="relative mb-6 p-2 bg-gray-100 rounded-lg overflow-hidden shadow-inner pointer-events-none">
         {child.floorplanData ? (
           <FloorPlanViewer originalData={child.floorplanData} />
@@ -235,9 +296,10 @@ const ChildCard: React.FC<{
         </div>
       </div>
 
+      {/** タグ */}
       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
-        {child.tag
-          ? child.tag.split(",").map((tag, i) => (
+        {child.floorplanData.tag
+          ? child.floorplanData.tag.map((tag, i) => (
               <span
                 key={i}
                 className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-medium"

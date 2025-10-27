@@ -1,6 +1,7 @@
 "use client";
 
 import { FloorData, PlanElement } from "@/constants/floorPlan";
+import { XMarkIcon } from "@heroicons/react/24/solid";
 import React, {
   useRef,
   useEffect,
@@ -14,17 +15,25 @@ interface FloorPlanEditorProps {
   originalData?: { 1?: FloorData; 2?: FloorData };
   onChange?: (newData: { 1: FloorData; 2?: FloorData }) => void;
   editable?: boolean;
+  currentFloor: 1 | 2;
+  setCurrentFloor: (floor: 1 | 2) => void;
+  clearSelectionTrigger?: number;
 }
 
 const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
   originalData,
   onChange,
-  editable = true,
+  editable,
+  currentFloor,
+  setCurrentFloor,
+  clearSelectionTrigger,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [data, setData] = useState<{ 1: FloorData; 2?: FloorData }>(
+  const [data, setData] = useState<{ 1: FloorData; 2?: FloorData }>(() =>
     JSON.parse(JSON.stringify(originalData))
   );
+
+  const imageCache = useRef<Record<string, HTMLImageElement>>({});
 
   const [dynamicScale, setDynamicScale] = useState(30);
   const [dimensions, setDimensions] = useState({
@@ -45,7 +54,9 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const originalPositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const [currentFloor, setCurrentFloor] = useState<1 | 2>(1);
+  useEffect(() => {
+    setSelectedElement(null);
+  }, [clearSelectionTrigger]);
 
   const getFloorSize = useCallback((floor: FloorData) => {
     const rooms = floor.rooms ?? [];
@@ -111,22 +122,42 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
       const h = el.height * dynamicScale;
       const isRoom = (floor.rooms ?? []).includes(el);
 
-      ctx.strokeStyle = isRoom ? "#1f2937" : "#9ca3af";
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(x, y, w, h);
+      if (el.imageUrl) {
+        const key = el.imageUrl;
+        if (imageCache.current[key]) {
+          ctx.drawImage(imageCache.current[key], x, y, w, h);
+        } else {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.src = key;
+          img.onload = () => {
+            imageCache.current[key] = img;
+            drawAllFloorPlans();
+          };
+        }
+      } else {
+        ctx.strokeStyle = isRoom ? "#1f2937" : "#9ca3af";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x, y, w, h);
 
-      ctx.fillStyle = isRoom ? "#f3f4f6" : "#e5e7eb";
-      ctx.fillRect(x + 1.5, y + 1.5, w - 3, h - 3);
+        ctx.fillStyle = isRoom ? "#f3f4f6" : "#e5e7eb";
+        ctx.fillRect(x + 1.5, y + 1.5, w - 3, h - 3);
+      }
 
       ctx.fillStyle =
-        el === selectedElement ? "#2563eb" : isRoom ? "#374151" : "#6b7280";
-      ctx.font = "10px Inter, sans-serif";
+        el.name === selectedElement?.name
+          ? "#2563eb"
+          : isRoom
+          ? "#374151"
+          : "#6b7280";
+      ctx.font = "14px Inter, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(el.name, x + w / 2, y + h / 2, w);
 
-      if (el === selectedElement && !isRoom) {
-        ctx.fillRect(x + w - 6, y + h - 6, 6, 6);
+      if (selectedElement && el.name === selectedElement.name) {
+        ctx.fillStyle = "#2563eb";
+        ctx.fillRect(x + w - 10, y + h - 10, 10, 10);
       }
     });
   }, [data, currentFloor, dynamicScale, selectedElement, dimensions]);
@@ -169,7 +200,13 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
       const w = clicked.width * dynamicScale;
       const h = clicked.height * dynamicScale;
 
-      if (cx >= x + w - 6 && cx <= x + w && cy >= y + h - 6 && cy <= y + h) {
+      const resizeArea = 12;
+      if (
+        cx >= x + w - resizeArea &&
+        cx <= x + w &&
+        cy >= y + h - resizeArea &&
+        cy <= y + h
+      ) {
         setResizing({ element: clicked, corner: "br" });
       } else {
         setDragging(true);
@@ -183,8 +220,30 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
 
   const handleMouseMove = (e: MouseEvent<HTMLCanvasElement>) => {
     if (!editable) return;
-    if (!dragging && !resizing.element) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     const { x: cx, y: cy } = getCanvasCoordinates(e);
+
+    canvas.style.cursor = "default";
+
+    if (selectedElement && !dragging && !resizing.element) {
+      const x = selectedElement.x * dynamicScale + dimensions.offsetX;
+      const y = selectedElement.y * dynamicScale + dimensions.offsetY;
+      const w = selectedElement.width * dynamicScale;
+      const h = selectedElement.height * dynamicScale;
+      const resizeArea = 12;
+
+      if (
+        cx >= x + w - resizeArea &&
+        cx <= x + w &&
+        cy >= y + h - resizeArea &&
+        cy <= y + h
+      ) {
+        canvas.style.cursor = "nwse-resize";
+      }
+    } else if (dragging || resizing.element) {
+      canvas.style.cursor = "grabbing";
+    }
 
     if (dragging && selectedElement) {
       const dx = (cx - dragStartRef.current.x) / dynamicScale;
@@ -192,7 +251,7 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
       selectedElement.x = originalPositionRef.current.x + dx;
       selectedElement.y = originalPositionRef.current.y + dy;
       setData({ ...data });
-      onChange?.({ ...data });
+      requestAnimationFrame(() => onChange?.({ ...data }));
     } else if (resizing.element) {
       const el = resizing.element;
       const baseX = el.x * dynamicScale + dimensions.offsetX;
@@ -200,7 +259,7 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
       el.width = Math.max(0.1, (cx - baseX) / dynamicScale);
       el.height = Math.max(0.1, (cy - baseY) / dynamicScale);
       setData({ ...data });
-      onChange?.({ ...data });
+      requestAnimationFrame(() => onChange?.({ ...data }));
     }
   };
 
@@ -226,6 +285,16 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
     currentFloor,
   ]);
 
+  useEffect(() => {
+    if (originalData && !dragging && !resizing.element) {
+      setData(JSON.parse(JSON.stringify(originalData)));
+    }
+  }, [originalData, dragging, resizing.element]);
+
+  useEffect(() => {
+    setSelectedElement(null);
+  }, [currentFloor]);
+
   if (!originalData || !originalData[1]) {
     return (
       <div className="flex items-center justify-center h-48 text-gray-500 text-sm border border-gray-300 rounded">
@@ -240,8 +309,10 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
         {originalData[1] && (
           <button
             onClick={() => setCurrentFloor(1)}
-            className={`px-4 py-2 rounded ${
-              currentFloor === 1 ? "bg-blue-600 text-white" : "bg-gray-200"
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              currentFloor === 1
+                ? "bg-gray-800 text-white shadow-md"
+                : "bg-gray-200 text-gray-800"
             }`}
           >
             1階
@@ -250,14 +321,53 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
         {originalData[2] && (
           <button
             onClick={() => setCurrentFloor(2)}
-            className={`px-4 py-2 rounded ${
-              currentFloor === 2 ? "bg-blue-600 text-white" : "bg-gray-200"
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              currentFloor === 2
+                ? "bg-gray-800 text-white shadow-md"
+                : "bg-gray-200 text-gray-800"
             }`}
           >
             2階
           </button>
         )}
       </div>
+
+      {selectedElement && (
+        <button
+          type="button"
+          onClick={() => {
+            setData((prev) => {
+              const floor = prev[currentFloor];
+              if (!floor) return prev;
+              const newObjects =
+                floor.objects?.filter((o) => o.name !== selectedElement.name) ??
+                [];
+              const newFloor = { ...floor, objects: newObjects };
+              const newData = { ...prev, [currentFloor]: newFloor };
+              requestAnimationFrame(() => onChange?.(newData));
+              return newData;
+            });
+            setSelectedElement(null);
+          }}
+          className="absolute z-10 w-6 h-6 flex items-center justify-center
+               bg-white border border-red-400 rounded-full shadow-sm
+               hover:bg-red-500 hover:text-white transition-colors
+               cursor-pointer"
+          style={{
+            top:
+              dimensions.offsetY + selectedElement.y * dynamicScale - 8 + "px",
+            left:
+              dimensions.offsetX +
+              selectedElement.x * dynamicScale +
+              selectedElement.width * dynamicScale -
+              8 +
+              "px",
+          }}
+          title="削除"
+        >
+          <XMarkIcon className="w-4 h-4 text-red-500 hover:text-white" />
+        </button>
+      )}
 
       <canvas
         ref={canvasRef}

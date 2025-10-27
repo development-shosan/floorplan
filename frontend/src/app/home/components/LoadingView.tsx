@@ -2,78 +2,103 @@
 
 import React, { useEffect, useState } from "react";
 import { ArrowPathIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { getHistoryList, getMadoriStatus, getMadroriResult } from "@/lib/api";
+import { useUser } from "@/hooks/userContext";
+import { History, HistoryChildren } from "@/constants/history";
 
 interface LoadingViewProps {
   jobId: string;
   setShowLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  setComplete: React.Dispatch<React.SetStateAction<boolean>>;
+  setSelectedHistory: React.Dispatch<React.SetStateAction<History | null>>;
 }
 
-const LoadingView: React.FC<LoadingViewProps> = ({ jobId, setShowLoading }) => {
+const LoadingView: React.FC<LoadingViewProps> = ({
+  jobId,
+  setShowLoading,
+  setComplete,
+  setSelectedHistory,
+}) => {
+  const { user } = useUser();
+
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<"processing" | "completed" | "failed">(
     "processing"
   );
-  const [estimatedTime, setEstimatedTime] = useState("約1分");
+  const [estimatedTime, setEstimatedTime] = useState("不明");
 
   useEffect(() => {
+    if (!user) return;
+
     const fetchProgress = async () => {
       try {
-        // const data = await getMadoriStatus(jobId);
-        // setProgress(data.progress || 0);
-        // setStatus(data.status);
-        // setEstimatedTime(data.estimatedTime || "不明");
+        // 間取り生成ステータス確認API
+        const data = await getMadoriStatus(jobId);
+        setProgress(data.progress);
+        setStatus(data.status);
+        setEstimatedTime(data.estimatedTime || "不明");
 
-        const simulatedProgress = Math.floor(Math.random() * 10) + 5;
-
-        setProgress((prev) => {
-          if (prev >= 100) return 100;
-
-          let next = prev + simulatedProgress;
-          if (next > 100) next = 100;
-
-          const remaining = 100 - next;
-          setEstimatedTime(
-            remaining > 0 ? `約${Math.ceil(remaining / 2)}秒` : "完了"
-          );
-
-          if (next >= 100) {
-            setStatus("completed");
-          }
-
-          return next;
-        });
+        if (data.status === "completed" || data.status === "failed") {
+          clearInterval(interval);
+        }
       } catch (error) {
-        console.error("進行状況取得エラー:", error);
+        console.error("間取り結果取得エラー:", error);
         setStatus("failed");
+        clearInterval(interval);
       }
     };
 
-    const interval = setInterval(() => {
-      fetchProgress();
-    }, 500);
-
+    const interval = setInterval(fetchProgress, 3000);
     fetchProgress();
 
     return () => clearInterval(interval);
-  }, [jobId]);
+  }, [jobId, user]);
 
   useEffect(() => {
-    if (status === "completed") {
-      const timer = setTimeout(() => {
-        alert("間取り生成が完了しました！");
-        setShowLoading(false);
-      }, 1000);
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
-      return () => clearTimeout(timer);
+    if (status === "completed" && user) {
+      const fetchData = async () => {
+        setComplete(false);
+        try {
+          const madoriResponse = await getMadroriResult(jobId);
+          const madoriData: HistoryChildren[] = madoriResponse.historyChildren;
+
+          const response = await getHistoryList(user.id);
+          const data: History[] = response.histories;
+
+          const parentId = madoriData[0]?.historyParentId;
+
+          if (parentId) {
+            const matchedHistory = data.find(
+              (history) => history.id === parentId
+            );
+            if (matchedHistory) setSelectedHistory(matchedHistory);
+          }
+        } catch (error) {
+          alert("間取り再生成に失敗しました");
+          console.error("間取り結果取得エラー:", error);
+          setStatus("failed");
+        } finally {
+          timer = setTimeout(() => {
+            setComplete(true);
+            setShowLoading(false);
+          }, 1000);
+        }
+      };
+
+      fetchData();
     } else if (status === "failed") {
-      const timer = setTimeout(() => {
-        alert("間取り生成に失敗しました...");
+      alert("間取り再生成に失敗しました");
+      timer = setTimeout(() => {
+        setComplete(false);
         setShowLoading(false);
       }, 1000);
-
-      return () => clearTimeout(timer);
     }
-  }, [status, setShowLoading]);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [status, user, jobId, setShowLoading, setComplete, setSelectedHistory]);
 
   return (
     <div className="flex flex-col items-center justify-center py-20 bg-white rounded-lg shadow-sm">

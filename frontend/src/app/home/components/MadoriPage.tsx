@@ -19,6 +19,9 @@ import {
 import { useUser } from "@/hooks/userContext";
 import { HomeIcon } from "@heroicons/react/20/solid";
 import LoadingView from "./LoadingView";
+import { createMadori } from "@/lib/api";
+import HistoryChild from "./HistoryChild";
+import { History } from "@/constants/history";
 
 const Header: React.FC = () => {
   const { user } = useUser();
@@ -56,7 +59,7 @@ interface FormState {
   commitment: string;
 }
 
-interface RequestBody {
+export interface RequestBody {
   title: string;
   clientName: string;
   layout_conditions: {
@@ -125,7 +128,11 @@ const UnitInputField: React.FC<UnitInputFieldProps> = ({
   );
 };
 
-const MadoriPage: React.FC = () => {
+interface MadoriPageProps {
+  setActiveTab: (tab: string) => void;
+}
+
+const MadoriPage: React.FC<MadoriPageProps> = ({ setActiveTab }) => {
   const initialForm: FormState = {
     title: "",
     customerName: "",
@@ -138,10 +145,12 @@ const MadoriPage: React.FC = () => {
     toiletCount: "1",
     commitment: "",
   };
-
+  const [selectedHistory, setSelectedHistory] = useState<History | null>(null);
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showLoading, setShowLoading] = useState(false);
+  const [loadingJobId, setLoadingJobId] = useState<string | null>(null);
+  const [complete, setComplete] = useState<boolean>(false);
 
   const pToMm = (pStr: string): string => {
     const pVal = parseFloat(pStr);
@@ -218,11 +227,27 @@ const MadoriPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleGenerateClick = () => {
+  const handleGenerateClick = async () => {
+    if (showLoading) return;
     if (!validate()) return;
-    const body = createRequestBody(form);
-    console.log("間取り生成リクエストボディ:", JSON.stringify(body, null, 2));
-    setShowLoading(true);
+    const request = createRequestBody(form);
+
+    try {
+      setShowLoading(true);
+      // 間取り生成API
+      const response = await createMadori(request);
+      const jobId = response.jobId;
+
+      if (jobId) {
+        setLoadingJobId(jobId);
+      } else {
+        setShowLoading(false);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("間取り生成に失敗しました");
+      setShowLoading(false);
+    }
   };
 
   const inputClass =
@@ -257,8 +282,15 @@ const MadoriPage: React.FC = () => {
     <div className={`bg-gray-50 ${showLoading ? "h-[80vh]" : "min-h-screen"}`}>
       <Header />
       <main className="max-w-6xl mx-auto px-8 py-8">
-        {showLoading ? (
-          <LoadingView jobId="dummy-job-id" setShowLoading={setShowLoading} />
+        {showLoading && loadingJobId ? (
+          <LoadingView
+            jobId={loadingJobId}
+            setShowLoading={setShowLoading}
+            setComplete={setComplete}
+            setSelectedHistory={setSelectedHistory}
+          />
+        ) : complete && selectedHistory ? (
+          <HistoryChild history={selectedHistory} setActiveTab={setActiveTab} />
         ) : (
           <>
             <section className="bg-white p-6 shadow-md rounded-lg mb-12">
@@ -436,6 +468,7 @@ const MadoriPage: React.FC = () => {
               <button
                 className="mt-8 w-full bg-gray-800 text-white font-bold py-3 rounded-md hover:bg-gray-700 transition duration-150"
                 onClick={handleGenerateClick}
+                disabled={showLoading}
               >
                 間取り生成開始
               </button>

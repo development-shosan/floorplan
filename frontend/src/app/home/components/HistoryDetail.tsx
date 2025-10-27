@@ -39,6 +39,8 @@ const HistoryDetail: React.FC<HistoryDetailProps> = ({
 
   const [floorData, setFloorData] = useState(initialFloorData);
   const [previewMode, setPreviewMode] = useState(false);
+  const [currentFloor, setCurrentFloor] = useState<1 | 2>(1);
+  const [clearSelectionTrigger, setClearSelectionTrigger] = useState(0);
 
   const viewerData = {
     ...child.floorplanData,
@@ -48,12 +50,17 @@ const HistoryDetail: React.FC<HistoryDetailProps> = ({
 
   const handleBackFromPreview = () => setPreviewMode(false);
 
+  const handlePreviewClick = () => {
+    setClearSelectionTrigger((prev) => prev + 1);
+    setPreviewMode(true);
+  };
+
   if (previewMode) {
     return (
       <HistoryPreview
         history={history}
         child={child}
-        floorData={floorData}
+        floorplanData={viewerData}
         onBack={handleBackFromPreview}
       />
     );
@@ -73,7 +80,7 @@ const HistoryDetail: React.FC<HistoryDetailProps> = ({
           </button>
           <button
             className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800"
-            onClick={() => setPreviewMode(true)}
+            onClick={handlePreviewClick}
           >
             プレビュー
           </button>
@@ -81,7 +88,7 @@ const HistoryDetail: React.FC<HistoryDetailProps> = ({
       </div>
 
       <div className="grid grid-cols-[4fr_6fr] gap-10">
-        <div className="space-y-4 bg-gray-50 p-6 rounded-lg border border-gray-300">
+        <div className="space-y-4 bg-gray-50 p-6 rounded-lg border h-200 border-gray-300">
           <h2 className="text-xl font-semibold pb-2 mb-4">入力内容確認</h2>
 
           <DetailRow
@@ -144,6 +151,9 @@ const HistoryDetail: React.FC<HistoryDetailProps> = ({
                 originalData={viewerData}
                 onChange={(newData) => setFloorData(newData)}
                 editable={true}
+                currentFloor={currentFloor}
+                setCurrentFloor={setCurrentFloor}
+                clearSelectionTrigger={clearSelectionTrigger}
               />
             ) : (
               <div className="flex items-center justify-center h-48 text-gray-500 text-sm">
@@ -154,8 +164,8 @@ const HistoryDetail: React.FC<HistoryDetailProps> = ({
 
           <div className="mt-4">
             <EquipmentSelector
-              floorData={floorData}
               setFloorData={setFloorData}
+              currentFloor={currentFloor}
             />
           </div>
         </div>

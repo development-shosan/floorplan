@@ -1,3 +1,4 @@
+import { RequestBody } from "@/app/home/components/MadoriPage";
 import { CompanyFormData } from "@/constants/company";
 import { History, HistoryChildren } from "@/constants/history";
 import { UserFormData } from "@/constants/user";
@@ -47,9 +48,12 @@ async function parseResponse(response: Response) {
   }
 }
 
-async function fetchApi(path: string, options: RequestInit = {}) {
+async function fetchApi(
+  path: string,
+  options: RequestInit & { isFormData?: boolean } = {}
+) {
   const headers = {
-    "Content-Type": "application/json",
+    ...(options.isFormData ? {} : { "Content-Type": "application/json" }),
     ...options.headers,
   };
 
@@ -268,6 +272,12 @@ export const getHistoryChildren = (userId: number, history: History) => {
 };
 
 // 間取り生成リクエスト
+export const createMadori = (request: RequestBody) => {
+  return fetchApi(`/api/v1/floorplans`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+};
 
 // 間取り生成ステータス確認
 export const getMadoriStatus = (jobId: string) => {
@@ -277,21 +287,72 @@ export const getMadoriStatus = (jobId: string) => {
 };
 
 // 間取り生成結果取得
+export const getMadroriResult = (jobId: string) => {
+  return fetchApi(`/api/v1/floorplans/results/${jobId}`, {
+    method: "GET",
+  });
+};
 
 // プランお気に入り登録/解除
 export const togglePlanFavorite = (child: HistoryChildren) => {
-  const { id } = child;
-  const planId = id;
-  return fetchApi(`/api/v1/floorplans/plans/${planId}/favorite`, {
+  const { id, isPatternFavorite } = child;
+  const historyChildId = id;
+  return fetchApi(`/api/v1/floorplans/plans/${historyChildId}/favorite`, {
     method: "PUT",
+    body: JSON.stringify({
+      isPatternFavorite,
+    }),
   });
 };
 
 // プラン削除
 export const deletePlan = (child: HistoryChildren) => {
   const { id } = child;
-  const planId = id;
-  return fetchApi(`/api/v1/floorplans/plans/${planId}`, {
+  const historyChildId = id;
+  return fetchApi(`/api/v1/floorplans/plans/${historyChildId}`, {
     method: "DELETE",
+  });
+};
+
+// 間取り再生成
+export const regeneratePlan = (history: History) => {
+  const { id } = history;
+  const historyParentId = id;
+  return fetchApi(`/api/v1/floorplans/regeneration/${historyParentId}	`, {
+    method: "POST",
+  });
+};
+
+// 間取り更新
+export const updateMadori = (child: HistoryChildren) => {
+  const { id } = child;
+  const historyChildId = id;
+  return fetchApi(`/api/v1/floorplans/update/${historyChildId}`, {
+    method: "PUT",
+  });
+};
+
+// 設備イメージリスト取得
+export const getEquipmentImages = () => {
+  return fetchApi("/api/v1/floorplans/images", { method: "GET" });
+};
+
+// 設備イメージ追加
+export const uploadEquipmentImage = (file: File) => {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  return fetchApi("/api/v1/floorplans/image", {
+    method: "POST",
+    body: formData,
+    isFormData: true,
+  });
+};
+
+// 設備イメージ削除
+export const deleteEquipmentImage = (name: string) => {
+  return fetchApi(`/api/v1/floorplans/image`, {
+    method: "DELETE",
+    body: JSON.stringify({ name }),
   });
 };
