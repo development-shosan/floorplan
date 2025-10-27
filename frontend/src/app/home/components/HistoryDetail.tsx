@@ -7,6 +7,8 @@ import EquipmentSelector from "./EquipmentSelector";
 import { FloorData } from "@/constants/floorPlan";
 import FloorPlanEditor from "./FloorPlanEditor";
 import HistoryPreview from "./HistoryPreview";
+import { UserRole } from "@/constants/roles";
+import { useUser } from "@/hooks/userContext";
 
 interface HistoryDetailProps {
   history: History;
@@ -19,6 +21,8 @@ const HistoryDetail: React.FC<HistoryDetailProps> = ({
   child,
   onBack,
 }) => {
+  const { user } = useUser();
+
   const headerTitle = `対応ID: #${history.id.toString().padStart(6, "0")} - ${
     history.customerName
   }様`;
@@ -162,12 +166,14 @@ const HistoryDetail: React.FC<HistoryDetailProps> = ({
             )}
           </div>
 
-          <div className="mt-4">
-            <EquipmentSelector
-              setFloorData={setFloorData}
-              currentFloor={currentFloor}
-            />
-          </div>
+          {user?.role === UserRole.MEMBER && (
+            <div className="mt-4">
+              <EquipmentSelector
+                setFloorData={setFloorData}
+                currentFloor={currentFloor}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

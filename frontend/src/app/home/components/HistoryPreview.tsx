@@ -8,6 +8,8 @@ import { FloorData } from "@/constants/floorPlan";
 import jsPDF from "jspdf";
 import * as htmlToImage from "html-to-image";
 import { updateMadori } from "@/lib/api";
+import { UserRole } from "@/constants/roles";
+import { useUser } from "@/hooks/userContext";
 
 interface HistoryPreviewProps {
   history: History;
@@ -22,6 +24,8 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
   floorplanData,
   onBack,
 }) => {
+  const { user } = useUser();
+
   const containerRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLDivElement>(null);
 
@@ -266,6 +270,7 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
                   setTitle(e.target.value);
                   validateField("title", e.target.value);
                 }}
+                readOnly={user?.role !== UserRole.MEMBER}
               />
             </div>
             <div className="flex flex-col border-r border-gray-400">
@@ -279,12 +284,13 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
                   setCustomerName(e.target.value);
                   validateField("customerName", e.target.value);
                 }}
+                readOnly={user?.role !== UserRole.MEMBER}
               />
             </div>
             <div className="flex flex-col border-r border-gray-400 items-center">
               <input
                 type="date"
-                className={`py-2 text-center w-full max-w-[40%] ${
+                className={`py-2 text-center w-full max-w-[50%] ${
                   errors.date ? "border-red-500" : ""
                 }`}
                 value={date}
@@ -292,6 +298,7 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
                   setDate(e.target.value);
                   validateField("date", e.target.value);
                 }}
+                readOnly={user?.role !== UserRole.MEMBER}
               />
             </div>
             <div className="flex flex-col border-r border-gray-400">
@@ -305,6 +312,7 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
                   setPatternName(e.target.value);
                   validateField("patternName", e.target.value);
                 }}
+                readOnly={user?.role !== UserRole.MEMBER}
               />
             </div>
           </div>

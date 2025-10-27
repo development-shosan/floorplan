@@ -1,6 +1,8 @@
 "use client";
 
 import { FloorData, PlanElement } from "@/constants/floorPlan";
+import { UserRole } from "@/constants/roles";
+import { useUser } from "@/hooks/userContext";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import React, {
   useRef,
@@ -28,6 +30,8 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
   setCurrentFloor,
   clearSelectionTrigger,
 }) => {
+  const { user } = useUser();
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [data, setData] = useState<{ 1: FloorData; 2?: FloorData }>(() =>
     JSON.parse(JSON.stringify(originalData))
@@ -189,7 +193,8 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
   };
 
   const handleMouseDown = (e: MouseEvent<HTMLCanvasElement>) => {
-    if (!editable) return;
+    if (!editable || user?.role !== UserRole.MEMBER) return;
+
     const { x: cx, y: cy } = getCanvasCoordinates(e);
     const clicked = getClickedElement(cx, cy);
 
@@ -219,7 +224,7 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
   };
 
   const handleMouseMove = (e: MouseEvent<HTMLCanvasElement>) => {
-    if (!editable) return;
+    if (!editable || user?.role !== UserRole.MEMBER) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const { x: cx, y: cy } = getCanvasCoordinates(e);
@@ -264,7 +269,7 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
   };
 
   const handleMouseUp = () => {
-    if (!editable) return;
+    if (!editable || user?.role !== UserRole.MEMBER) return;
     setDragging(false);
     setResizing({ element: null, corner: null });
   };
@@ -332,7 +337,7 @@ const FloorPlanEditor: FC<FloorPlanEditorProps> = ({
         )}
       </div>
 
-      {selectedElement && (
+      {selectedElement && user?.role === UserRole.MEMBER && (
         <button
           type="button"
           onClick={() => {
