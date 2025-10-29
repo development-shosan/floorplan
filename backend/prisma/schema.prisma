@@ -51,6 +51,7 @@ model User {
   historyParents        HistoryParent[] @relation("UserToHistoryParent")
   updatedHistoryParents HistoryParent[] @relation("UserToHistoryParentUpdated")
   historyChildren       HistoryChild[]  @relation("UserToHistoryChild")
+  floorPlanGenerationJobs FloorPlanGenerationJob[]
 }
 
 model HistoryParent {
@@ -139,4 +140,7 @@ model FloorPlanGenerationJob {
   completedAt     DateTime? @map("completed_at") // 完了日時
   historyParentId Int?      @map("history_parent_id") // 完了後に関連するHistoryParentのID
   historyParent   HistoryParent? @relation(fields: [historyParentId], references: [id])
+
+  requestUserId   Int       @map("request_user_id")
+  requestUser     User      @relation(fields: [requestUserId], references: [id])
 }
