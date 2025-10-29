@@ -101,8 +101,6 @@ async function fetchApi(
 
   if (!response.ok) {
     switch (response.status) {
-      case 204:
-        throw new Error("⚠️ エラー: No Content (204)");
       case 400:
         throw new Error("⚠️ エラー: 不正なリクエスト (400)");
       case 401:

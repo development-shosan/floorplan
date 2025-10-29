@@ -1,107 +1,133 @@
 /**
  * @jest-environment jsdom
  */
+
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { UserRole } from "@/constants/roles";
-import { useUser } from "@/hooks/userContext";
-import Header from "../components/HeaderForm";
-import { useRouter } from "next/navigation";
+import HeaderForm from "../components/HeaderForm";
 
-// Mock setup
-jest.mock("@/hooks/userContext", () => ({
-  useUser: jest.fn(),
-}));
+describe("HeaderForm コンポーネント", () => {
+  const mockLogout = jest.fn();
+  const mockSetActiveTab = jest.fn();
+  const mockOnTabReset = jest.fn();
 
-jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(),
-}));
+  const mockUser = {
+    id: 1,
+    name: "田中太郎",
+    role: UserRole.SYSTEM_ADMIN,
+    token: "dummy_token",
+  };
 
-const mockLogout = jest.fn();
-const mockPush = jest.fn();
-
-(useRouter as jest.Mock).mockReturnValue({ push: mockPush });
-
-const setup = (role: UserRole, name: string) => {
-  (useUser as jest.Mock).mockReturnValue({
-    user: { role, name },
-    loading: false,
-    logout: mockLogout,
-  });
-
-  render(<Header />);
-};
-
-// Tests
-describe("Header tests", () => {
-  beforeEach(() => {
+  afterEach(() => {
     jest.clearAllMocks();
   });
 
-  test("営業担当者(MEMBER)のUIが表示される", () => {
-    setup(UserRole.MEMBER, "テストユーザー");
-
-    // タイトル
-    expect(screen.getByText("🏠 間取り生成システム")).toBeInTheDocument();
-
-    // メニュー
-    expect(screen.getByText("間取り生成")).toBeInTheDocument();
-    expect(screen.getByText("対応履歴")).toBeInTheDocument();
-    expect(screen.getByText("⭐ お気に入り")).toBeInTheDocument();
-    expect(screen.getByText("マイページ")).toBeInTheDocument();
-
-    // 権限表示
-    expect(screen.getByText("営業 : テストユーザー")).toBeInTheDocument();
-  });
-
-  test("会社管理担当者(COMPANY_ADMIN)のUIが表示される", () => {
-    setup(UserRole.COMPANY_ADMIN, "テスト会社担当者");
-
-    // タイトル
-    expect(screen.getByText("👥 ユーザー管理")).toBeInTheDocument();
-
-    // メニュー
-    expect(screen.getByText("対応履歴")).toBeInTheDocument();
-    expect(screen.getByText("ユーザー管理")).toBeInTheDocument();
-
-    // 権限表示
-    expect(screen.getByText("管理者 : テスト会社担当者")).toBeInTheDocument();
-  });
-
-  test("システム管理者(SYSTEM_ADMIN)のUIが表示される", () => {
-    setup(UserRole.SYSTEM_ADMIN, "テストシステム担当者");
-
-    // タイトル
-    expect(screen.getByText("👥 会社管理")).toBeInTheDocument();
-
-    // メニュー
-    expect(screen.getByText("対応履歴")).toBeInTheDocument();
-    expect(screen.getByText("会社管理")).toBeInTheDocument();
-
-    // 権限表示
-    expect(
-      screen.getByText("管理者 : テストシステム担当者")
-    ).toBeInTheDocument();
-  });
-
-  test("ログアウトボタン呼び出し可能", () => {
-    setup(UserRole.MEMBER, "テストユーザー");
-
-    const logoutBtn = screen.getByRole("button", { name: /ログアウト/i });
-    logoutBtn.click();
-
-    expect(mockLogout).toHaveBeenCalled();
-  });
-
-  test("loading中はロード中メッセージ表示", () => {
-    (useUser as jest.Mock).mockReturnValue({
-      user: null,
-      loading: true,
-      logout: mockLogout,
-    });
-
-    render(<Header />);
-
+  it("ロード中の場合、「ロード中...」と表示される", () => {
+    render(
+      <HeaderForm
+        user={mockUser}
+        loading={true}
+        logout={mockLogout}
+        activeTab=""
+        setActiveTab={mockSetActiveTab}
+      />
+    );
     expect(screen.getByText("ロード中...")).toBeInTheDocument();
+  });
+
+  // ユーザー名が正しく表示される
+  it("ユーザー名が正しく表示される", () => {
+    render(
+      <HeaderForm
+        user={mockUser}
+        loading={false}
+        logout={mockLogout}
+        activeTab=""
+        setActiveTab={mockSetActiveTab}
+      />
+    );
+    expect(screen.getByText("田中太郎")).toBeInTheDocument();
+  });
+
+  // タブクリックで setActiveTab が呼ばれる
+  it("メニュータブをクリックすると setActiveTab が呼ばれる", () => {
+    render(
+      <HeaderForm
+        user={mockUser}
+        loading={false}
+        logout={mockLogout}
+        activeTab=""
+        setActiveTab={mockSetActiveTab}
+      />
+    );
+
+    // 管理者用メニューには「会社管理」などが表示される
+    const tabButton = screen.getByText("会社管理");
+    fireEvent.click(tabButton);
+
+    expect(mockSetActiveTab).toHaveBeenCalledWith("会社管理");
+  });
+
+  // 同じタブをもう一度クリックすると onTabReset が呼ばれる
+  it("同じタブを再クリックすると onTabReset が呼ばれる", () => {
+    render(
+      <HeaderForm
+        user={mockUser}
+        loading={false}
+        logout={mockLogout}
+        activeTab="会社管理"
+        setActiveTab={mockSetActiveTab}
+        onTabReset={mockOnTabReset}
+      />
+    );
+
+    const tabButton = screen.getByText("会社管理");
+    fireEvent.click(tabButton);
+
+    expect(mockOnTabReset).toHaveBeenCalledWith("会社管理");
+  });
+
+  // メニューボタンをクリックするとドロップダウンが表示される
+  it("ユーザーアイコンをクリックするとドロップダウンメニューが表示される", () => {
+    render(
+      <HeaderForm
+        user={mockUser}
+        loading={false}
+        logout={mockLogout}
+        activeTab=""
+        setActiveTab={mockSetActiveTab}
+      />
+    );
+
+    // 初期状態ではログアウトボタンは存在しない
+    expect(screen.queryByText("ログアウト")).not.toBeInTheDocument();
+
+    // アイコン（ユーザー名）をクリック
+    fireEvent.click(screen.getByText("田中太郎"));
+
+    // ログアウトボタンが表示されることを確認
+    expect(screen.getByText("ログアウト")).toBeInTheDocument();
+  });
+
+  // ログアウトボタンがクリックされると logout が呼ばれる
+  it("「ログアウト」ボタンをクリックすると logout 関数が呼ばれる", () => {
+    render(
+      <HeaderForm
+        user={mockUser}
+        loading={false}
+        logout={mockLogout}
+        activeTab=""
+        setActiveTab={mockSetActiveTab}
+      />
+    );
+
+    // ドロップダウンを開く
+    fireEvent.click(screen.getByText("田中太郎"));
+
+    // ログアウトボタンをクリック
+    fireEvent.click(screen.getByText("ログアウト"));
+
+    expect(mockLogout).toHaveBeenCalledTimes(1);
   });
 });

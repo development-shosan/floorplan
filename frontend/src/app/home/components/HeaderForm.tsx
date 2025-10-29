@@ -10,7 +10,7 @@ interface MenuItem {
   roles: UserRole[];
 }
 
-interface HeaderProps {
+interface HeaderFormProps {
   user: LoginResponse;
   loading: boolean;
   logout: () => void;
@@ -19,7 +19,7 @@ interface HeaderProps {
   onTabReset?: (tab: string) => void; // 추가
 }
 
-const Header: React.FC<HeaderProps> = ({
+const HeaderForm: React.FC<HeaderFormProps> = ({
   user,
   loading,
   logout,
@@ -147,4 +147,4 @@ const Header: React.FC<HeaderProps> = ({
   );
 };
 
-export default React.memo(Header);
+export default React.memo(HeaderForm);
