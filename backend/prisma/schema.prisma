@@ -51,6 +51,7 @@ model User {
   historyParents        HistoryParent[] @relation("UserToHistoryParent")
   updatedHistoryParents HistoryParent[] @relation("UserToHistoryParentUpdated")
   historyChildren       HistoryChild[]  @relation("UserToHistoryChild")
+  floorPlanGenerationJobs FloorPlanGenerationJob[]
 }
 
 model HistoryParent {
@@ -74,6 +75,7 @@ model HistoryParent {
   deleted      Boolean  @default(false) // 削除フラグ
 
   children HistoryChild[]
+  generationJobs FloorPlanGenerationJob[]
 }
 
 // 履歴子テーブル
@@ -123,4 +125,22 @@ enum Role {
   MEMBER // 一般メンバー
   COMPANY_ADMIN // 会社管理者
   SYSTEM_ADMIN // システム全体管理者
+}
+
+model FloorPlanGenerationJob {
+  jobId           String    @id @unique @map("job_id") // FEに返すジョブID
+  status          String    @default("processing") // processing, completed, failed
+  progress        Int       @default(0) // 0-100の整数、進行率（％）
+  estimatedTime   String?   @map("estimated_time") // 予想残り時間（秒単位など）
+  requestPayload  Json      @map("request_payload") // 間取り生成リクエストのボディ（layout_conditionsなど）
+  resultPayload   Json?     @map("result_payload") // Pythonからの生成結果（plans配列）
+  errorMessage    String?   @map("error_message") // エラーメッセージ
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  completedAt     DateTime? @map("completed_at") // 完了日時
+  historyParentId Int?      @map("history_parent_id") // 完了後に関連するHistoryParentのID
+  historyParent   HistoryParent? @relation(fields: [historyParentId], references: [id])
+
+  requestUserId   Int       @map("request_user_id")
+  requestUser     User      @relation(fields: [requestUserId], references: [id])
 }
