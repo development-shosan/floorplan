@@ -5,7 +5,7 @@
     "scripts": {
         "test": "jest",
         "setup": "npm install prisma --save-dev && npx prisma init --datasource-provider mysql",
-        "dev": "npm run prettier && ts-node-dev --respawn src/app.ts",
+        "dev": "ts-node-dev --respawn src/app.ts",
         "docker:start": "sleep 5 && npx prisma migrate deploy && npx prisma db seed && npm run dev",
         "prettier": "prettier --write ."
     },
