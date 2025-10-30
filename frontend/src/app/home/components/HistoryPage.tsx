@@ -9,19 +9,21 @@ import {
 } from "@heroicons/react/16/solid";
 import { StarIcon as StarOutline } from "@heroicons/react/24/outline";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
-import { History, HistoryChildren } from "@/constants/history";
+import { History } from "@/constants/history";
 import { useUser } from "@/hooks/userContext";
 import { UserRole } from "@/constants/roles";
 import HistoryChild from "./HistoryChild";
-import HistoryDetail from "./HistoryDetail";
-import HistoryPreview from "./HistoryPreview";
 import { getHistoryList } from "@/lib/api";
 
 interface HistoryPageProps {
   resetSignal?: number;
+  setActiveTab: (tab: string) => void;
 }
 
-const HistoryPage: React.FC<HistoryPageProps> = ({ resetSignal }) => {
+const HistoryPage: React.FC<HistoryPageProps> = ({
+  resetSignal,
+  setActiveTab,
+}) => {
   const { user } = useUser();
 
   const [histories, setHistories] = useState<History[]>([]);
@@ -35,14 +37,6 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ resetSignal }) => {
   const [tab, setTab] = useState<"all" | "favorite">("all");
 
   const [selectedHistory, setSelectedHistory] = useState<History | null>(null);
-  const [selectedChild, setSelectedChild] = useState<HistoryChildren | null>(
-    null
-  );
-
-  const [isChildOpen, setIsChildOpen] = useState(false);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-
   const [loading, setLoading] = useState(true);
 
   const itemsPerPage = 10;
@@ -52,12 +46,12 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ resetSignal }) => {
     direction: "asc" | "desc";
   } | null>(null);
 
-  //対応履歴一覧API
   const fetchHistories = async () => {
     try {
       if (!user) return;
 
       setLoading(true);
+      // 対応履歴一覧API
       const response = await getHistoryList(user.id);
       const data: History[] = response.histories;
       setHistories(data);
@@ -75,10 +69,6 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ resetSignal }) => {
 
   useEffect(() => {
     setSelectedHistory(null);
-    setSelectedChild(null);
-    setIsChildOpen(false);
-    setIsDetailOpen(false);
-    setIsPreviewOpen(false);
     setSearch("");
     setSearchInput("");
     setStartDate("");
@@ -150,39 +140,6 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ resetSignal }) => {
     }
   };
 
-  const handleCloseChild = () => {
-    setSelectedHistory(null);
-    setIsChildOpen(false);
-  };
-
-  const handleDetailClick = (history: History) => {
-    setSelectedHistory(history);
-    setIsChildOpen(true);
-  };
-
-  const handleGoToDetail = (child: HistoryChildren) => {
-    setSelectedChild(child);
-    setIsChildOpen(false);
-    setIsDetailOpen(true);
-    setIsPreviewOpen(false);
-  };
-
-  const handleCloseDetail = () => {
-    setIsDetailOpen(false);
-    setIsChildOpen(true);
-  };
-
-  const handleGoToPreview = (child: HistoryChildren) => {
-    setSelectedChild(child);
-    setIsDetailOpen(false);
-    setIsPreviewOpen(true);
-  };
-
-  const handleClosePreview = () => {
-    setIsPreviewOpen(false);
-    setIsDetailOpen(true);
-  };
-
   const totalPages = Math.ceil(sortedHistories.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginated = sortedHistories.slice(
@@ -194,25 +151,8 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ resetSignal }) => {
     <div>
       {loading ? (
         <p>{"ロード中..."}</p>
-      ) : isPreviewOpen && selectedHistory && selectedChild ? (
-        <HistoryPreview
-          history={selectedHistory}
-          child={selectedChild}
-          onBack={handleClosePreview}
-        />
-      ) : isDetailOpen && selectedHistory && selectedChild ? (
-        <HistoryDetail
-          history={selectedHistory}
-          child={selectedChild}
-          onBack={handleCloseDetail}
-          onPreviewClick={handleGoToPreview}
-        />
-      ) : isChildOpen && selectedHistory ? (
-        <HistoryChild
-          history={selectedHistory}
-          onBack={handleCloseChild}
-          onDetailClick={handleGoToDetail}
-        />
+      ) : selectedHistory ? (
+        <HistoryChild history={selectedHistory} setActiveTab={setActiveTab} />
       ) : (
         <>
           <div className="flex gap-4 mb-6">
@@ -459,7 +399,7 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ resetSignal }) => {
                     <td className="border-b border-gray-300 px-3 py-2 flex justify-center gap-2">
                       <button
                         className="bg-gray-300 hover:bg-gray-400 px-3 py-1 rounded text-sm"
-                        onClick={() => handleDetailClick(h)}
+                        onClick={() => setSelectedHistory(h)}
                       >
                         詳細
                       </button>

@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import CompanyManagementPage from "./components/CompanyManagementPage";
 import UserManagementPage from "./components/UserManagementPage";
 import ContactPage from "./components/ContactPage";
+import MadoriPage from "./components/MadoriPage";
 
 const Home: React.FC = () => {
   const { user, loading, logout } = useUser();
@@ -22,6 +23,12 @@ const Home: React.FC = () => {
     }
   }, [user, loading, router]);
 
+  useEffect(() => {
+    if (user?.role === "MEMBER") {
+      setActiveTab("間取り生成");
+    }
+  }, [user]);
+
   if (loading || !user) return <p>ロード中...</p>;
 
   const handleTabChange = (tab: string) => {
@@ -33,7 +40,10 @@ const Home: React.FC = () => {
   };
 
   const componentMap: Record<string, React.ReactNode> = {
-    対応履歴: <HistoryPage resetSignal={resetSignal} />,
+    間取り生成: <MadoriPage setActiveTab={handleTabChange} />,
+    対応履歴: (
+      <HistoryPage resetSignal={resetSignal} setActiveTab={handleTabChange} />
+    ),
     会社管理: <CompanyManagementPage resetSignal={resetSignal} />,
     ユーザー管理: <UserManagementPage resetSignal={resetSignal} />,
     お問い合わせ: <ContactPage />,

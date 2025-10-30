@@ -122,7 +122,7 @@ const FloorPlanViewer: FC<FloorPlanViewerProps> = ({ originalData }) => {
 
       ctx.fillStyle = "#6b7280";
       ctx.font = "12px Inter, sans-serif";
-      ctx.fillText(`${floorNum}F`, baseX, baseY - 5);
+      ctx.fillText(`${floorNum}F`, baseX, baseY - 15);
 
       elements.forEach((el) => {
         const x = el.x * scale + baseX;

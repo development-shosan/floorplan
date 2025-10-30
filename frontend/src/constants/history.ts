@@ -61,10 +61,8 @@ export interface History {
 export interface HistoryChildren {
   id: number; // 固有ID
   historyParentId: number; // 親ID
-  patternName: string; // 間取りパターン詳細情報
   floorplanData: FloorPlanData; // 間取り図JSONデータ
   isPatternFavorite: boolean; // お気に入り
-  tag: string; // タグ（,区切り）
   isDownloaded: boolean; // ダウンロード済み
   pdfPath: string; // PDFパス
   constructionName: string; // 工事名称
