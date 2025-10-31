@@ -223,10 +223,6 @@ const MadoriPage: React.FC<MadoriPageProps> = ({ setActiveTab }) => {
     else if (ldk < 1 || ldk > 100)
       newErrors.ldkSize = "LDK希望面積は1〜100帖で入力してください";
 
-    // 動線のこだわり
-    if (!form.commitment.trim())
-      newErrors.commitment = "動線のこだわりは必須です";
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
