@@ -84,6 +84,7 @@ interface UnitInputFieldProps {
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
   inputClass: string;
   error?: string;
+  numericOnly?: boolean;
 }
 
 const UnitInputField: React.FC<UnitInputFieldProps> = ({
@@ -96,10 +97,13 @@ const UnitInputField: React.FC<UnitInputFieldProps> = ({
   setForm,
   inputClass,
   error,
+  numericOnly = true,
 }) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const numericValue = e.target.value.replace(/[^\d.]/g, "");
-    setForm((prev) => ({ ...prev, [name]: numericValue }));
+    const inputValue = numericOnly
+      ? e.target.value.replace(/[^\d.]/g, "")
+      : e.target.value;
+    setForm((prev) => ({ ...prev, [name]: inputValue }));
   };
 
   return (
@@ -115,7 +119,7 @@ const UnitInputField: React.FC<UnitInputFieldProps> = ({
           onChange={handleChange}
           placeholder={placeholder}
           className={`${inputClass} pr-8`}
-          inputMode="decimal"
+          inputMode={numericOnly ? "decimal" : "text"}
         />
         {unit && (
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
@@ -309,6 +313,7 @@ const MadoriPage: React.FC<MadoriPageProps> = ({ setActiveTab }) => {
                   setForm={setForm}
                   inputClass={inputClass}
                   error={errors.title}
+                  numericOnly={false}
                 />
                 <UnitInputField
                   name="customerName"
@@ -320,6 +325,7 @@ const MadoriPage: React.FC<MadoriPageProps> = ({ setActiveTab }) => {
                   setForm={setForm}
                   inputClass={inputClass}
                   error={errors.customerName}
+                  numericOnly={false}
                 />
                 <UnitInputField
                   name="familyComposition"
