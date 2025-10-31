@@ -18,6 +18,9 @@ import {
     CreateHistoryChildDataInput,
     CreateHistoryParentDataInput,
     FloorPlanGenerationJobInfor,
+    HistoryChildFloorplanData,
+    LayoutConditions,
+    RegenerateHistoryParent,
     RequestPayload
 } from './Types/FloorplanParam';
 
@@ -446,11 +449,16 @@ export default class DBMgr {
      * Creates a new floor plan generation job in the database.
      *
      * @param createData - The input data required to create the floor plan generation job
+     * @param tx - Optional Prisma transaction client
      */
-    public async createFloorPlanGenerationJob(createData: CreateFloorPlanDataInput): Promise<void> {
+    public async createFloorPlanGenerationJob(
+        createData: CreateFloorPlanDataInput,
+        tx?: Prisma.TransactionClient
+    ): Promise<void> {
         this.logger.debug(`createFloorPlanGenerationJob(${JSON.stringify(createData)})`);
 
-        await prisma.floorPlanGenerationJob.create({
+        const client = tx || prisma;
+        await client.floorPlanGenerationJob.create({
             data: { ...createData }
         });
     }
@@ -495,7 +503,7 @@ export default class DBMgr {
      * Creates a new history parent record in the database.
      *
      * @param createData - The data required to create the history parent record
-     * @param tx - Optional Prisma transaction client to execute the creation within a transaction
+     * @param tx - Optional Prisma transaction client
      * @returns The ID of the newly created history parent record
      */
     public async createHistoryParent(
@@ -516,7 +524,7 @@ export default class DBMgr {
      * Creates multiple history child records in the database.
      *
      * @param createDataList - An array of history child data to be created
-     * @param tx - Optional Prisma transaction client to execute the creation within a transaction
+     * @param tx - Optional Prisma transaction client
      */
     public async createHistoryChildren(
         createDataList: CreateHistoryChildDataInput[],
@@ -535,7 +543,7 @@ export default class DBMgr {
      *
      * @param jobId - The unique identifier of the floor plan generation job to update
      * @param historyParentId - The ID of the history parent record to associate with the job
-     * @param tx - Optional Prisma transaction client to execute the update within a transaction
+     * @param tx - Optional Prisma transaction client
      */
     public async updateHistoryParentIdForFloorPlanJob(
         jobId: string,
@@ -580,6 +588,60 @@ export default class DBMgr {
         await prisma.historyChild.update({
             where: { id: historyChildId },
             data: { deleted: true }
+        });
+    }
+
+    /**
+     * Get historyParent information.
+     *
+     * @param historyParentId - The ID of the history child record to remove
+     * @returns HistoryParent information
+     */
+    public async getRegenerateHistoryParent(
+        historyParentId: number
+    ): Promise<RegenerateHistoryParent | null> {
+        this.logger.debug(`getRegenerateHistoryParent(${historyParentId})`);
+
+        const historyParent = await prisma.historyParent.findUnique({
+            select: {
+                title: true,
+                customerName: true,
+                conditions: true
+            },
+            where: {
+                id: historyParentId,
+                deleted: false
+            }
+        });
+
+        if (!historyParent) {
+            return null;
+        }
+
+        return {
+            ...historyParent,
+            conditions: historyParent.conditions as LayoutConditions
+        };
+    }
+
+    /**
+     * Updates a floorplan.
+     *
+     * @param historyChildId - The ID of the history child record to remove
+     * @param updateFloorplanData - Update floorplan data for historyChild
+     */
+    public async updateHistoryChildFloorplanAndDownload(
+        historyChildId: number,
+        updateFloorplanData: HistoryChildFloorplanData
+    ): Promise<void> {
+        this.logger.debug(`updateHistoryChildFloorplanAndDownload(${historyChildId})`);
+
+        await prisma.historyChild.update({
+            where: { id: historyChildId },
+            data: {
+                floorplanData: updateFloorplanData,
+                isDownloaded: true
+            }
         });
     }
 }
