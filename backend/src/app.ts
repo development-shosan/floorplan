@@ -21,6 +21,7 @@ import { env } from '../env';
 import { Role } from '@prisma/client';
 import multer from 'multer';
 import { AppConstant } from './SpecificCommons';
+import path from 'path';
 
 const app = express();
 const router = express.Router();
@@ -41,6 +42,8 @@ app.use(
 );
 // JSONボディパーサーを有効にする
 app.use(express.json());
+// Serve static files from the public directory
+app.use('/backend/public', express.static(path.join(__dirname, '..', 'public')));
 // HTTP log output
 app.use(morgan('dev'));
 // prefix URI
@@ -729,8 +732,8 @@ router.post(
                 return;
             }
 
-            await dsMgr.uploadFloorplanImage(req.file);
-            res.sendStatus(200);
+            const { url, name } = await dsMgr.uploadFloorplanImage(req.file);
+            res.status(200).json({ url, name });
         } catch (err) {
             if (err instanceof FloorplanImageError) {
                 res.sendStatus(400);

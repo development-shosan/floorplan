@@ -123,7 +123,7 @@ const EquipmentSelector: React.FC<EquipmentSelectorProps> = ({
 
     const newObjects: (PlanElement & { imageUrl?: string })[] =
       selectedImages.map((img) => ({
-        name: img.name,
+        name: img.name?.split("_")[0],
         x: 1,
         y: 1,
         width: 2,
@@ -244,13 +244,13 @@ const EquipmentSelector: React.FC<EquipmentSelectorProps> = ({
               </label>
               <Image
                 src={img.src}
-                alt={img.name.split("_")[1]}
+                alt={img.name.split("_")[1] || img.name || "Equipment Image"}
                 width={80}
                 height={80}
                 className="object-cover rounded border mb-1"
                 unoptimized
               />
-              {img.name.split("_")[0] || img.name}
+              {img.name.split("_")[0]}
               <span className="text-xs text-gray-500 mb-1">
                 {img.name.split("_")[1]?.split(".")[0] || "タグなし"}
               </span>

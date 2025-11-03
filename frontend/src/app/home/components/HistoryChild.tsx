@@ -184,9 +184,9 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
           )}
 
           <div className="space-y-6">
-            {historyChildren.map((child, index) => (
+            {historyChildren.map((child) => (
               <ChildCard
-                key={index}
+                key={child.id}
                 child={child}
                 user={user}
                 onDetailClick={handleGoToDetail}

@@ -611,7 +611,7 @@ export default class DSMgr {
 
             const images = imageFiles.map((file) => ({
                 name: file,
-                url: `/backend/public/${file}`
+                url: `http://localhost:${env.WEB_SERVER_PORT}/backend/public/${file}`
             }));
 
             return { images };
@@ -626,7 +626,7 @@ export default class DSMgr {
      *
      * @param file - The uploaded file from multer
      */
-    public async uploadFloorplanImage(file: Express.Multer.File): Promise<void> {
+    public async uploadFloorplanImage(file: Express.Multer.File): Promise<{ url: string; name: string }> {
         this.logger.debug(`uploadFloorplanImage(${file.originalname})`);
 
         try {
@@ -662,6 +662,9 @@ export default class DSMgr {
 
             await fs.writeFile(targetPath, file.buffer);
             this.logger.info(`Image uploaded successfully: ${file.originalname}`);
+
+            const imageUrl = `http://localhost:${env.WEB_SERVER_PORT}/backend/public/${file.originalname}`;
+            return { url: imageUrl, name: file.originalname };
         } catch (err) {
             if (err instanceof FloorplanImageError) {
                 this.logger.warn(`Upload image failed: ${err.message}`);

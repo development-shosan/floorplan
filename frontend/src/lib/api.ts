@@ -80,6 +80,7 @@ async function fetchApi(
     (headers as Record<string, string>)["Authorization"] = `${token}`;
   }
 
+  console.log({ API_BASE_URL, path, fullUrl: `${API_BASE_URL}${path}` });
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
@@ -335,7 +336,6 @@ export const getEquipmentImages = () => {
   return fetchApi("/api/v1/floorplans/images", { method: "GET" });
 };
 
-// 設備イメージ追加
 export const uploadEquipmentImage = (file: File) => {
   const formData = new FormData();
   formData.append("image", file);

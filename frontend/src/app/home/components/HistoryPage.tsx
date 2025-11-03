@@ -46,7 +46,7 @@ const HistoryPage: React.FC<HistoryPageProps> = ({
     direction: "asc" | "desc";
   } | null>(null);
 
-  const fetchHistories = async () => {
+  const fetchHistories = React.useCallback(async () => {
     try {
       if (!user) return;
 
@@ -61,11 +61,11 @@ const HistoryPage: React.FC<HistoryPageProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchHistories();
-  }, []);
+  }, [user, fetchHistories, resetSignal]);
 
   useEffect(() => {
     setSelectedHistory(null);

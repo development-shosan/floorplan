@@ -624,9 +624,35 @@ export default class DBMgr {
     ): Promise<void> {
         this.logger.debug(`toggleHistoryChildFavorite(${historyChildId}, ${isPatternFavorite})`);
 
-        await prisma.historyChild.update({
-            where: { id: historyChildId },
-            data: { isPatternFavorite }
+        await prisma.$transaction(async (tx) => {
+            // 1. Update HistoryChild's isPatternFavorite status
+            await tx.historyChild.update({
+                where: { id: historyChildId },
+                data: { isPatternFavorite }
+            });
+
+            // 2. Get the historyParentId of the updated HistoryChild
+            const updatedChild = await tx.historyChild.findUnique({
+                where: { id: historyChildId },
+                select: { historyParentId: true }
+            });
+
+            if (updatedChild?.historyParentId) {
+                // 3. Count the number of favorited HistoryChild records for this HistoryParent
+                const totalFavoriteCount = await tx.historyChild.count({
+                    where: {
+                        historyParentId: updatedChild.historyParentId,
+                        isPatternFavorite: true,
+                        deleted: false
+                    }
+                });
+
+                // 4. Update the totalFavoriteCount in the corresponding HistoryParent record
+                await tx.historyParent.update({
+                    where: { id: updatedChild.historyParentId },
+                    data: { totalFavoriteCount }
+                });
+            }
         });
     }
 
