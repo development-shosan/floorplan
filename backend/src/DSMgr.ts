@@ -16,12 +16,14 @@ import { AppConstant } from './SpecificCommons';
 import { Prisma, Role } from '@prisma/client';
 import { createAuthToken } from './commonUtils';
 import { createLogger } from './logger';
+import { env } from '../env';
+import axios from 'axios';
 import {
     CompanyInfoOutput,
     CreateCompanyDataInput,
     UpdateCompanyDataInput
 } from './Types/CompanyParam';
-import { HistoryChildInfoOutput, HistoryInfoOutput } from './Types/HistoryParam';
+import { HistoryChildInfoOutput, HistoryInfoOutput, HistoryChildInfo, HistoryInfo } from './Types/HistoryParam';
 import {
     FloorplanGenerationStatus,
     FloorplanImage,
@@ -369,9 +371,6 @@ export default class DSMgr {
 
         try {
             const jobId = crypto.randomUUID();
-            // TODO: Send the requestPayload to Python for processing
-
-            // Save floor plan generation job to the database
             const createFloorPlanData = {
                 jobId,
                 status: AppConstant.FLOORPLAN.GENERATION.STATUS.PROCESSING,
@@ -381,6 +380,19 @@ export default class DSMgr {
                 requestUserId: userId
             };
             await this.dbMgr.createFloorPlanGenerationJob(createFloorPlanData, tx);
+
+            // Trigger Python service
+            try {
+                const pythonPayload = {
+                    ...requestPayload,
+                    job_id: jobId // Add job_id for Python service
+                };
+                this.logger.info(`Calling Python service for job: ${jobId}`);
+                await axios.post(`${env.PYTHON_API_URL}/generate-floorplan`, pythonPayload);
+            } catch (pythonError) {
+                this.logger.error('Error calling Python service:', pythonError);
+                // TODO: Handle error, maybe set job status to FAILED
+            }
 
             return { jobId };
         } catch (err) {
@@ -402,53 +414,6 @@ export default class DSMgr {
             const floorplanGeneration = await this.dbMgr.getFloorPlanGenerationJob(jobId);
             if (!floorplanGeneration) {
                 throw new FloorplanGenerationError('FloorplanGeneration was not found.');
-            }
-
-            if (AppConstant.FLOORPLAN.GENERATION.STATUS.COMPLETED === floorplanGeneration.status) {
-                let historyParentId: number;
-                const layouts = [
-                    floorplanGeneration.resultPayload.layout_1,
-                    floorplanGeneration.resultPayload.layout_2,
-                    floorplanGeneration.resultPayload.layout_3
-                ];
-
-                await prisma.$transaction(async (tx) => {
-                    if (floorplanGeneration.historyParentId) {
-                        // Regenerate
-                        historyParentId = floorplanGeneration.historyParentId;
-                    } else {
-                        // New generate
-                        const createHistoryParentData = {
-                            title: floorplanGeneration.requestPayload.title,
-                            conditions: floorplanGeneration.requestPayload.layout_conditions,
-                            customerName: floorplanGeneration.requestPayload.clientName,
-                            createdById: floorplanGeneration.requestUserId,
-                            updatedId: floorplanGeneration.requestUserId
-                        };
-                        historyParentId = await this.dbMgr.createHistoryParent(
-                            createHistoryParentData,
-                            tx
-                        );
-
-                        await this.dbMgr.updateHistoryParentIdForFloorPlanJob(
-                            jobId,
-                            historyParentId,
-                            tx
-                        );
-                    }
-                    const historyChildrenData = layouts.map((layout) => {
-                        const { type, ...floorplanData } = layout;
-
-                        return {
-                            historyParentId,
-                            patternName: type,
-                            floorplanData,
-                            tag: layout.tag.join(','),
-                            createdById: floorplanGeneration.requestUserId
-                        };
-                    });
-                    await this.dbMgr.createHistoryChildren(historyChildrenData, tx);
-                });
             }
 
             return {
@@ -477,7 +442,7 @@ export default class DSMgr {
     public async getFloorplanGenerationResults(
         jobId: string,
         authPayload: AuthTokenPayload
-    ): Promise<HistoryChildInfoOutput> {
+    ): Promise<{ history: HistoryInfo | null; historyChildren: HistoryChildInfo[] }> {
         this.logger.debug(`getFloorplanGenerationResults(${jobId})`);
 
         try {
@@ -491,13 +456,16 @@ export default class DSMgr {
                 );
             }
 
-            const floorplanGenerationResults = await this.dbMgr.getHistoryChildren(
+            const historyParent = await this.dbMgr.getHistoryParent(floorplanGeneration.historyParentId);
+            const historyChildren = await this.dbMgr.getHistoryChildren(
                 floorplanGeneration.historyParentId,
                 floorplanGeneration.requestUserId,
                 authPayload
             );
+
             return {
-                historyChildren: floorplanGenerationResults
+                history: historyParent,
+                historyChildren: historyChildren
             };
         } catch (err) {
             if (err instanceof FloorplanGenerationError) {
@@ -740,6 +708,78 @@ export default class DSMgr {
             } else {
                 this.logger.error('deleteFloorplanImage() Unexpected error', err);
             }
+            throw err;
+        }
+    }
+
+    /**
+     * Completes a floor plan generation job.
+     *
+     * @param jobId - The unique identifier of the floor plan generation job
+     * @param result - The result data from the Python service
+     */
+    public async completeFloorplanGenerationJob(
+        jobId: string,
+        result: any
+    ): Promise<void> {
+        this.logger.debug(`completeFloorplanGenerationJob(${jobId})`);
+        try {
+            await this.dbMgr.updateFloorplanJobResult(jobId, result);
+            this.logger.info(`Job ${jobId} has been completed.`);
+
+            // Process the results and create history records
+            const floorplanGeneration = await this.dbMgr.getFloorPlanGenerationJob(jobId);
+            if (!floorplanGeneration) {
+                throw new FloorplanGenerationError('FloorplanGeneration was not found after completion.');
+            }
+
+            let historyParentId: number;
+            const layouts = [
+                floorplanGeneration.resultPayload.layout_1,
+                floorplanGeneration.resultPayload.layout_2,
+                floorplanGeneration.resultPayload.layout_3
+            ];
+
+            await prisma.$transaction(async (tx) => {
+                if (floorplanGeneration.historyParentId) {
+                    // Regenerate
+                    historyParentId = floorplanGeneration.historyParentId;
+                } else {
+                    // New generate
+                    const createHistoryParentData = {
+                        title: floorplanGeneration.requestPayload.title,
+                        conditions: floorplanGeneration.requestPayload.layout_conditions,
+                        customerName: floorplanGeneration.requestPayload.clientName,
+                        createdById: floorplanGeneration.requestUserId,
+                        updatedId: floorplanGeneration.requestUserId
+                    };
+                    historyParentId = await this.dbMgr.createHistoryParent(
+                        createHistoryParentData,
+                        tx
+                    );
+
+                    await this.dbMgr.updateHistoryParentIdForFloorPlanJob(
+                        jobId,
+                        historyParentId,
+                        tx
+                    );
+                }
+                const historyChildrenData = layouts.map((layout) => {
+                    const { type, ...floorplanData } = layout;
+
+                    return {
+                        historyParentId,
+                        patternName: type,
+                        floorplanData,
+                        tag: layout.tag.join(','),
+                        createdById: floorplanGeneration.requestUserId
+                    };
+                });
+                await this.dbMgr.createHistoryChildren(historyChildrenData, tx);
+            });
+
+        } catch (err) {
+            this.logger.error('completeFloorplanGenerationJob() Unexpected error', err);
             throw err;
         }
     }

@@ -298,7 +298,7 @@ export const togglePlanFavorite = (child: HistoryChildren) => {
   return fetchApi(`/api/v1/floorplans/plans/${historyChildId}/favorite`, {
     method: "PUT",
     body: JSON.stringify({
-      isPatternFavorite,
+      isPatternFavorite: !isPatternFavorite,
     }),
   });
 };

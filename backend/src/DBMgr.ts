@@ -340,9 +340,62 @@ export default class DBMgr {
             companyId: history.createdBy.company.id,
             companyName: history.createdBy.company.name,
             userId: history.createdBy.id,
-            userName: history.createdBy.name ?? null,
-            createdBy: undefined
+            userName: history.createdBy.name ?? null
         }));
+    }
+
+    /**
+     * Gets a history parent record by its ID.
+     *
+     * @param historyParentId - The ID of the parent history record
+     * @returns The history parent record, or null if not found
+     */
+    public async getHistoryParent(historyParentId: number): Promise<HistoryInfo | null> {
+        this.logger.debug(`getHistoryParent(${historyParentId})`);
+
+        const history = await prisma.historyParent.findUnique({
+            where: {
+                id: historyParentId,
+                deleted: false
+            },
+            select: {
+                id: true,
+                title: true,
+                totalFavoriteCount: true,
+                customerName: true,
+                createdAt: true,
+                createdById: true,
+                updatedAt: true,
+                updatedId: true,
+                conditions: true,
+                createdBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                        company: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!history) {
+            return null;
+        }
+
+        return {
+            ...history,
+            favoriteCount: history.totalFavoriteCount,
+            updatedById: history.updatedId,
+            companyId: history.createdBy.company.id,
+            companyName: history.createdBy.company.name,
+            userId: history.createdBy.id,
+            userName: history.createdBy.name ?? null
+        };
     }
 
     /**
@@ -641,6 +694,25 @@ export default class DBMgr {
             data: {
                 floorplanData: updateFloorplanData,
                 isDownloaded: true
+            }
+        });
+    }
+
+    /**
+     * Updates the result of a floor plan generation job.
+     *
+     * @param jobId - The unique identifier of the floor plan generation job
+     * @param resultPayload - The result data from the Python service
+     */
+    public async updateFloorplanJobResult(jobId: string, resultPayload: any): Promise<void> {
+        this.logger.debug(`updateFloorplanJobResult(${jobId})`);
+
+        await prisma.floorPlanGenerationJob.update({
+            where: { jobId },
+            data: {
+                status: 'completed',
+                progress: 100,
+                resultPayload: resultPayload
             }
         });
     }

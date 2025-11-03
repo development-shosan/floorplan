@@ -457,8 +457,8 @@ router.post(
         body('layout_conditions.number_of_rooms.unit').trim().notEmpty().isString(),
         body('layout_conditions.number_of_toilets.value').trim().notEmpty().isString(),
         body('layout_conditions.number_of_toilets.unit').trim().notEmpty().isString(),
-        body('layout_conditions.commitment_flow_lines.value').trim().notEmpty().isString(),
-        body('layout_conditions.commitment_flow_lines.unit').trim().notEmpty().isString()
+        body('layout_conditions.commitment_flow_lines.value').optional().isString(),
+        body('layout_conditions.commitment_flow_lines.unit').optional().isString()
     ],
     refreshTokenIfValid,
     authorizeRoles(Role.MEMBER),
@@ -587,7 +587,7 @@ router.delete(
     '/floorplans/plans/:historyChildId',
     [param('historyChildId').exists().isNumeric()],
     refreshTokenIfValid,
-    authorizeRoles(Role.SYSTEM_ADMIN),
+    authorizeRoles(Role.MEMBER),
     validatorErrorChecker,
     async (req: Request, res: Response, next: NextFunction) => {
         try {
@@ -766,6 +766,25 @@ router.delete(
             } else {
                 res.sendStatus(500);
             }
+            return next(err);
+        }
+    }
+);
+
+/**
+ * Callback endpoint for floorplan generation completion.
+ */
+router.post(
+    '/floorplans/callback',
+    [body('jobId').notEmpty().isString(), body('result').notEmpty().isObject()],
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { jobId, result } = req.body;
+            await dsMgr.completeFloorplanGenerationJob(jobId, result);
+            res.sendStatus(200);
+        } catch (err) {
+            res.sendStatus(500);
             return next(err);
         }
     }

@@ -56,27 +56,18 @@ const LoadingView: React.FC<LoadingViewProps> = ({
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    console.log({ status, user, jobId }); // Debugging line
 
     if (status === "completed" && user) {
+      console.log({ status, user, jobId }); // Debugging line
       const fetchData = async () => {
-        setComplete(false);
         try {
-          const madoriResponse = await getMadroriResult(jobId);
-          const madoriData: HistoryChildren[] = madoriResponse.historyChildren;
-
-          const response = await getHistoryList(user.id);
-          const data: History[] = response.histories;
-
-          const parentId = madoriData[0]?.historyParentId;
-
-          if (parentId) {
-            const matchedHistory = data.find(
-              (history) => history.id === parentId
-            );
-            if (matchedHistory) setSelectedHistory(matchedHistory);
+          const response = await getMadroriResult(jobId);
+          if (response && response.history) {
+            setSelectedHistory(response.history);
           }
         } catch (error) {
-          alert("間取り再生成に失敗しました");
+          alert("間取り結果の取得に失敗しました");
           console.error("間取り結果取得エラー:", error);
           setStatus("failed");
         } finally {
