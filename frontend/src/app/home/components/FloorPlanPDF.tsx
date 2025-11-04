@@ -87,6 +87,12 @@ const FloorPlanPDF: FC<FloorPlanViewerProps> = ({ floorData, floorLabel }) => {
 
       if (el.imageUrl && imageCache.current[el.imageUrl]) {
         ctx.drawImage(imageCache.current[el.imageUrl], x, y, w, h);
+
+        ctx.fillStyle = "#374151";
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(el.name, x + w / 2, y + h / 2);
       } else {
         ctx.strokeStyle = isRoom ? "#1f2937" : "#9ca3af";
         ctx.lineWidth = 1.5;

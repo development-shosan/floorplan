@@ -650,7 +650,8 @@ export default class DSMgr {
                 throw new FloorplanImageError('File size exceeds 5MB limit.');
             }
 
-            const targetPath = path.join(publicDir, file.originalname);
+            const decodedFilename = Buffer.from(file.originalname, 'latin1').toString('utf-8');
+            const targetPath = path.join(publicDir, decodedFilename);
             try {
                 await fs.access(targetPath);
                 throw new FloorplanImageError('File with the same name already exists.');
@@ -661,10 +662,10 @@ export default class DSMgr {
             }
 
             await fs.writeFile(targetPath, file.buffer);
-            this.logger.info(`Image uploaded successfully: ${file.originalname}`);
+            this.logger.info(`Image uploaded successfully: ${decodedFilename}`);
 
-            const imageUrl = `http://localhost:${env.WEB_SERVER_PORT}/backend/public/${file.originalname}`;
-            return { url: imageUrl, name: file.originalname };
+            const imageUrl = `http://localhost:${env.WEB_SERVER_PORT}/backend/public/${encodeURIComponent(decodedFilename)}`;
+            return { url: imageUrl, name: decodedFilename };
         } catch (err) {
             if (err instanceof FloorplanImageError) {
                 this.logger.warn(`Upload image failed: ${err.message}`);
