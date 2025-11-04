@@ -323,11 +323,13 @@ export const regeneratePlan = (history: History) => {
 };
 
 // 間取り更新
-export const updateMadori = (child: HistoryChildren) => {
-  const { id } = child;
-  const historyChildId = id;
-  return fetchApi(`/api/v1/floorplans/update/${historyChildId}`, {
+export const updateMadori = (
+  historyChild: HistoryChildren,
+  floorplanData: HistoryChildFloorplanData
+) => {
+  return fetchApi(`/api/v1/floorplans/update/${historyChild.id}`, {
     method: "PUT",
+    body: JSON.stringify({ floorplanData }),
   });
 };
 

@@ -37,9 +37,7 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
   const [date, setDate] = useState(
     child.createdAt ? new Date(child.createdAt).toISOString().slice(0, 10) : ""
   );
-  const [patternName, setPatternName] = useState(
-    child.floorplanData.type || ""
-  );
+  const [patternName, setPatternName] = useState(child.patternName || "");
 
   const [errors, setErrors] = useState({
     title: "",
@@ -76,7 +74,14 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
         validateField("date", date) &&
         validateField("patternName", patternName);
 
-      if (!isValid) return;
+      if (!isValid) {
+        const errorMessages = Object.values(errors)
+          .filter((e) => e)
+          .join("\n");
+        alert(`入力内容にエラーがあります。\n${errorMessages}`);
+        setIsGenerating(false);
+        return;
+      }
       if (!captureRef.current) return;
 
       const dataUrl = await htmlToImage.toPng(captureRef.current, {
@@ -113,7 +118,8 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
         setPdfGenerated(true);
 
         try {
-          await updateMadori(child);
+          console.log("Updating madori with floorplanData:", floorplanData);
+          await updateMadori(child, floorplanData);
         } catch (err) {
           console.error("間取り更新に失敗しました", err);
           alert("間取り更新に失敗しました");
@@ -235,10 +241,10 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
 
       <div ref={captureRef} className="flex flex-col gap-6">
         {floorplanData?.[1] && (
-          <FloorPlanPDF floorData={floorplanData[1]} floorLabel="1階" />
+          <FloorPlanPDF floorData={floorplanData[1]} floorLabel={`1階`} />
         )}
         {floorplanData?.[2] && (
-          <FloorPlanPDF floorData={floorplanData[2]} floorLabel="2階" />
+          <FloorPlanPDF floorData={floorplanData[2]} floorLabel={`2階`} />
         )}
 
         <div className="border border-gray-400 text-sm mt-auto">

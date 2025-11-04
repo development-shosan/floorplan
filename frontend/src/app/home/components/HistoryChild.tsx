@@ -257,7 +257,7 @@ const ChildCard: React.FC<{
 
   return (
     <div className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm">
-      <h2 className="text-xl font-semibold mb-4">{child.floorplanData.type}</h2>
+      <h2 className="text-xl font-semibold mb-4">{child.patternName}</h2>
       <div className="relative mb-6 p-2 bg-gray-100 rounded-lg overflow-hidden shadow-inner pointer-events-none">
         {child.floorplanData ? (
           <FloorPlanViewer originalData={child.floorplanData} />

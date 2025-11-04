@@ -46,10 +46,14 @@ const HistoryDetail: React.FC<HistoryDetailProps> = ({
   const [currentFloor, setCurrentFloor] = useState<1 | 2>(1);
   const [clearSelectionTrigger, setClearSelectionTrigger] = useState(0);
 
-  const viewerData = {
-    ...child.floorplanData,
-    1: floorData[1],
-    2: floorData[2],
+  const viewerData: HistoryChildFloorplanData = {
+    '1': floorData[1],
+    '2': floorData[2],
+    tag: child.floorplanData.tag,
+    first_floor_area: child.floorplanData.first_floor_area,
+    second_floor_area: child.floorplanData.second_floor_area,
+    total_floor_area: child.floorplanData.total_floor_area,
+    type: child.floorplanData.type,
   };
 
   const handleBackFromPreview = () => setPreviewMode(false);

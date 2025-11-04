@@ -7,6 +7,7 @@
         "setup": "npm install prisma --save-dev && npx prisma init --datasource-provider mysql",
         "dev": "ts-node-dev --respawn src/app.ts",
         "docker:start": "sleep 5 && npx prisma migrate deploy && npx prisma db seed && npm run dev",
+        "migrate:dev": "npx prisma migrate dev --name add_pattern_name_to_history_child",
         "prettier": "prettier --write ."
     },
     "keywords": [],

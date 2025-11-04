@@ -13,11 +13,16 @@ export interface FloorData {
 }
 
 export interface FloorPlanData {
-  first_floor_area: number;
-  second_floor_area: number;
-  total_floor_area: number;
-  tag: string[];
-  type: string;
+  "1": FloorData;
+  "2"?: FloorData;
+}
+
+export interface HistoryChildFloorplanData {
+  first_floor_area?: number;
+  second_floor_area?: number;
+  total_floor_area?: number;
+  tag?: string[];
+  type?: string;
   "1": FloorData;
   "2"?: FloorData;
 }
