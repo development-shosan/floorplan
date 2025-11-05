@@ -1,22 +1,208 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef } from "react";
 import { ArrowLeftIcon } from "@heroicons/react/20/solid";
 import { History, HistoryChildren } from "@/constants/history";
+import FloorPlanPDF from "./FloorPlanPDF";
+import { FloorData } from "@/constants/floorPlan";
+import jsPDF from "jspdf";
+import * as htmlToImage from "html-to-image";
+import { updateMadori } from "@/lib/api";
+import { UserRole } from "@/constants/roles";
+import { useUser } from "@/hooks/userContext";
 
 interface HistoryPreviewProps {
   history: History;
   child: HistoryChildren;
+  floorplanData?: { 1?: FloorData; 2?: FloorData };
   onBack: () => void;
 }
 
 const HistoryPreview: React.FC<HistoryPreviewProps> = ({
   history,
   child,
+  floorplanData,
   onBack,
 }) => {
+  const { user } = useUser();
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const captureRef = useRef<HTMLDivElement>(null);
+
+  const [pdfGenerated, setPdfGenerated] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const [title, setTitle] = useState(history.title || "");
+  const [customerName, setCustomerName] = useState(history.customerName || "");
+  const [date, setDate] = useState(
+    child.createdAt ? new Date(child.createdAt).toISOString().slice(0, 10) : ""
+  );
+  const [patternName, setPatternName] = useState(child.patternName || "");
+
+  const [errors, setErrors] = useState({
+    title: "",
+    customerName: "",
+    date: "",
+    patternName: "",
+  });
+
+  const validateField = (name: string, value: string) => {
+    let error = "";
+    switch (name) {
+      case "title":
+      case "customerName":
+      case "patternName":
+        if (!value.trim()) error = "必須入力です";
+        else if (value.length > 50) error = "50文字以内で入力してください";
+        break;
+      case "date":
+        if (!value) error = "必須入力です";
+        break;
+    }
+    setErrors((prev) => ({ ...prev, [name]: error }));
+    return error === "";
+  };
+
+  const handlePDFDownload = async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+
+    try {
+      const isValid =
+        validateField("title", title) &&
+        validateField("customerName", customerName) &&
+        validateField("date", date) &&
+        validateField("patternName", patternName);
+
+      if (!isValid) {
+        const errorMessages = Object.values(errors)
+          .filter((e) => e)
+          .join("\n");
+        alert(`入力内容にエラーがあります。\n${errorMessages}`);
+        setIsGenerating(false);
+        return;
+      }
+      if (!captureRef.current) return;
+
+      const dataUrl = await htmlToImage.toPng(captureRef.current, {
+        cacheBust: true,
+        pixelRatio: 3,
+        skipFonts: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const img = new Image();
+      img.src = dataUrl;
+      img.onload = async () => {
+        const imgWidth = img.width;
+        const imgHeight = img.height;
+        const ratio = Math.min(pageWidth / imgWidth, pageHeight / imgHeight);
+
+        const pdfWidth = imgWidth * ratio;
+        const pdfHeight = imgHeight * ratio;
+        const marginX = (pageWidth - pdfWidth) / 2;
+        const marginY = (pageHeight - pdfHeight) / 2;
+
+        pdf.addImage(dataUrl, "PNG", marginX, marginY, pdfWidth, pdfHeight);
+        pdf.save(`${title || "間取りプレビュー"}.pdf`);
+
+        setPdfGenerated(true);
+
+        try {
+          console.log("Updating madori with floorplanData:", floorplanData);
+          await updateMadori(child, floorplanData);
+        } catch (err) {
+          console.error("間取り更新に失敗しました", err);
+          alert("間取り更新に失敗しました");
+        }
+      };
+    } catch (error) {
+      console.error("PDF生成に失敗しました", error);
+      alert(
+        `PDFダウンロードに失敗しました。詳細: ${
+          error instanceof Error ? error.message : "不明なエラー"
+        }`
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    if (!captureRef.current) return;
+
+    try {
+      const dataUrl = await htmlToImage.toPng(captureRef.current, {
+        cacheBust: true,
+        pixelRatio: 3,
+        skipFonts: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const img = new Image();
+      img.src = dataUrl;
+      img.onload = () => {
+        const printWindow = window.open("", "_blank");
+        if (!printWindow) return;
+
+        const pageWidthMm = 297;
+        const pageHeightMm = 210;
+        const dpi = 96;
+        const pageWidthPx = (pageWidthMm / 25.4) * dpi;
+        const pageHeightPx = (pageHeightMm / 25.4) * dpi;
+
+        const ratio = Math.min(
+          pageWidthPx / img.width,
+          pageHeightPx / img.height
+        );
+        const imgWidth = img.width * ratio;
+        const imgHeight = img.height * ratio;
+
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>${title || "間取りプレビュー"}</title>
+              <style>
+                body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+                img { width: ${imgWidth}px; height: ${imgHeight}px; }
+              </style>
+            </head>
+            <body>
+              <img src="${dataUrl}" />
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+      };
+    } catch (error) {
+      console.error("印刷中エラー:", error);
+      alert(
+        `印刷に失敗しました。詳細: ${
+          error instanceof Error ? error.message : "不明なエラー"
+        }`
+      );
+    }
+  };
+
+  const canPrint = pdfGenerated || child.isDownloaded;
+
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md w-full">
+    <div
+      ref={containerRef}
+      className="p-6 bg-white rounded-lg shadow-md w-full flex flex-col gap-6"
+    >
       <div className="flex justify-between items-center mb-4 border-b pb-4">
         <div className="text-3xl">
           プレビュー
@@ -25,10 +211,22 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
           </span>
         </div>
         <div className="flex gap-2">
-          <button className="bg-gray-800 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700">
-            PDFダウンロード
+          <button
+            className={`bg-gray-800 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700 ${
+              isGenerating ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            onClick={handlePDFDownload}
+            disabled={isGenerating}
+          >
+            {isGenerating ? "生成中..." : "PDFダウンロード"}
           </button>
-          <button className="border border-gray-300 px-4 py-2 rounded-md text-sm hover:bg-gray-100">
+          <button
+            className={`bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-500 ${
+              !canPrint || isGenerating ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            onClick={handlePrint}
+            disabled={!canPrint || isGenerating}
+          >
             印刷
           </button>
           <button
@@ -41,57 +239,88 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
         </div>
       </div>
 
-      <div className="p-4 border border-gray-300 rounded-lg">
-        <div className="aspect-[1.414/1] w-full bg-gray-300 flex flex-col items-center justify-center text-2xl text-gray-600 rounded-md">
-          間取り図プレビュー
-          <span className="text-base mt-2">{"作成中"}</span>
-        </div>
+      <div ref={captureRef} className="flex flex-col gap-6">
+        {floorplanData?.[1] && (
+          <FloorPlanPDF floorData={floorplanData[1]} floorLabel={`1階`} />
+        )}
+        {floorplanData?.[2] && (
+          <FloorPlanPDF floorData={floorplanData[2]} floorLabel={`2階`} />
+        )}
 
-        <hr className="my-4 border-t-2 border-gray-800" />
-
-        <div className="mt-4 border border-gray-400 text-sm">
-          <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr] text-center border-b border-gray-400">
-            <div className="py-1 border-r border-gray-400 bg-gray-100">
-              工事名称
+        <div className="border border-gray-400 text-sm mt-auto">
+          <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr] text-center">
+            <div className="py-1 border-r border-b border-gray-400 bg-gray-100">
+              タイトル
             </div>
-            <div className="py-1 border-r border-gray-400 bg-gray-100">
-              図面形式
+            <div className="py-1 border-r border-b border-gray-400 bg-gray-100">
+              顧客名
             </div>
-            <div className="py-1 border-r border-gray-400 bg-gray-100">
-              縮尺
-            </div>
-            <div className="py-1 border-r border-gray-400 bg-gray-100"></div>
-            <div className="py-1 border-r border-gray-400 bg-gray-100"></div>
-            <div className="py-1 border-r border-gray-400 bg-gray-100"></div>
-            <div className="py-1 border-r border-gray-400 bg-gray-100">
+            <div className="py-1 border-r border-b border-gray-400 bg-gray-100">
               日付
             </div>
-            <div className="py-1 bg-gray-100">図番</div>
+            <div className="py-1 border-r border-b border-gray-400 bg-gray-100">
+              パータン
+            </div>
+            <div className="py-1 border-b border-gray-400 bg-gray-100 row-span-2"></div>
           </div>
 
-          <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr] text-center">
-            <div className="py-2 border-r border-gray-400 font-medium">
-              {child.constructionName}
+          <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr] text-center">
+            <div className="flex flex-col border-r border-gray-400">
+              <input
+                className={`py-2 text-center ${
+                  errors.title ? "border-red-500" : ""
+                }`}
+                value={title}
+                maxLength={50}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  validateField("title", e.target.value);
+                }}
+                readOnly={user?.role !== UserRole.MEMBER}
+              />
             </div>
-            <div className="py-2 border-r border-gray-400">
-              {child.drawingFormat}
+            <div className="flex flex-col border-r border-gray-400">
+              <input
+                className={`py-2 text-center ${
+                  errors.customerName ? "border-red-500" : ""
+                }`}
+                value={customerName}
+                maxLength={50}
+                onChange={(e) => {
+                  setCustomerName(e.target.value);
+                  validateField("customerName", e.target.value);
+                }}
+                readOnly={user?.role !== UserRole.MEMBER}
+              />
             </div>
-            <div className="py-2 border-r border-gray-400">{child.scale}</div>
-            <div className="py-2 border-r border-gray-400"></div>
-            <div className="py-2 border-r border-gray-400"></div>
-            <div className="py-2 border-r border-gray-400"></div>
-            <div className="py-2 border-r border-gray-400">
-              {child.createdAt
-                ? new Date(child.createdAt).toLocaleDateString("ja-JP", {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                  })
-                : "-"}
+            <div className="flex flex-col border-r border-gray-400 items-center">
+              <input
+                type="date"
+                className={`py-2 text-center w-full max-w-[50%] ${
+                  errors.date ? "border-red-500" : ""
+                }`}
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  validateField("date", e.target.value);
+                }}
+                readOnly={user?.role !== UserRole.MEMBER}
+              />
             </div>
-            <div className="py-2">{`#${history.id
-              .toString()
-              .padStart(6, "0")}-${child.id}`}</div>
+            <div className="flex flex-col border-r border-gray-400">
+              <input
+                className={`py-2 text-center ${
+                  errors.patternName ? "border-red-500" : ""
+                }`}
+                value={patternName}
+                maxLength={50}
+                onChange={(e) => {
+                  setPatternName(e.target.value);
+                  validateField("patternName", e.target.value);
+                }}
+                readOnly={user?.role !== UserRole.MEMBER}
+              />
+            </div>
           </div>
         </div>
       </div>

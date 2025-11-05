@@ -1,6 +1,5 @@
 fastapi
 uvicorn
+pydantic
+requests
 ortools
-matplotlib
-pytest
-httpx

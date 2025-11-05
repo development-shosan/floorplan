@@ -5,17 +5,35 @@ import DBMgr from './DBMgr';
 import { AuthTokenPayload, LoginResult, UserByEmail } from './Types/LoginParam';
 import { CreateUserDataInput, UpdateUserDataInput, UserInfoOutput } from './Types/UserParam';
 import bcrypt from 'bcrypt';
-import { UserModificationError, LoginError } from './ApplicationErrors';
+import {
+    UserModificationError,
+    LoginError,
+    FloorplanGenerationError,
+    FloorplanGenerationNotCompletedError,
+    FloorplanImageError
+} from './ApplicationErrors';
 import { AppConstant } from './SpecificCommons';
 import { Prisma, Role } from '@prisma/client';
 import { createAuthToken } from './commonUtils';
 import { createLogger } from './logger';
+import { env } from '../env';
+import axios from 'axios';
 import {
     CompanyInfoOutput,
     CreateCompanyDataInput,
     UpdateCompanyDataInput
 } from './Types/CompanyParam';
-import { HistoryChildInfo, HistoryChildInfoOutput, HistoryInfoOutput } from './Types/HistoryParam';
+import { HistoryChildInfoOutput, HistoryInfoOutput, HistoryChildInfo, HistoryInfo } from './Types/HistoryParam';
+import {
+    FloorplanGenerationStatus,
+    FloorplanImage,
+    HistoryChildFloorplanData,
+    RequestPayload
+} from './Types/FloorplanParam';
+import crypto from 'crypto';
+import prisma from '../prisma/client';
+import fs from 'fs/promises';
+import path from 'path';
 
 export default class DSMgr {
     private dbMgr: DBMgr;
@@ -51,7 +69,7 @@ export default class DSMgr {
                 throw new LoginError('The password is incorrect.');
             }
 
-            const jwtPayload = { role: user.role, companyId: user.companyId };
+            const jwtPayload = { userId: user.id, role: user.role, companyId: user.companyId };
             const token: string = createAuthToken(jwtPayload);
 
             return {
@@ -330,6 +348,442 @@ export default class DSMgr {
             };
         } catch (err) {
             this.logger.error('getHistoryChildren() Unexpected error', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Floorplan generation request.
+     *
+     * @param requestPayload - The request data sent to the Python service for processing
+     * @param userId - The ID of the user requesting the data
+     * @param tx - Optional Prisma transaction client
+     * @returns jobId
+     */
+    public async createFloorplanGenerationJob(
+        requestPayload: RequestPayload,
+        userId: number,
+        tx?: Prisma.TransactionClient
+    ): Promise<{ jobId: string }> {
+        this.logger.debug(
+            `createFloorplanGenerationJob(${JSON.stringify(requestPayload)}, ${userId})`
+        );
+
+        try {
+            const jobId = crypto.randomUUID();
+            const createFloorPlanData = {
+                jobId,
+                status: AppConstant.FLOORPLAN.GENERATION.STATUS.PROCESSING,
+                progress: 0,
+                estimatedTime: '60s',
+                requestPayload: requestPayload,
+                requestUserId: userId
+            };
+            await this.dbMgr.createFloorPlanGenerationJob(createFloorPlanData, tx);
+
+            // Trigger Python service
+            try {
+                const pythonPayload = {
+                    ...requestPayload,
+                    job_id: jobId // Add job_id for Python service
+                };
+                this.logger.info(`Calling Python service for job: ${jobId}`);
+                await axios.post(`${env.PYTHON_API_URL}/generate-floorplan`, pythonPayload);
+            } catch (pythonError) {
+                this.logger.error('Error calling Python service:', pythonError);
+                // TODO: Handle error, maybe set job status to FAILED
+            }
+
+            return { jobId };
+        } catch (err) {
+            this.logger.error('createFloorplanGenerationJob() Unexpected error', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Get floorplan generation status.
+     *
+     * @param jobId - The unique identifier (UUID) of the floor plan generation job
+     * @returns Floorplan generation status information
+     */
+    public async getFloorplanGenerationStatus(jobId: string): Promise<FloorplanGenerationStatus> {
+        this.logger.debug(`getFloorplanGenerationStatus(${jobId})`);
+
+        try {
+            const floorplanGeneration = await this.dbMgr.getFloorPlanGenerationJob(jobId);
+            if (!floorplanGeneration) {
+                throw new FloorplanGenerationError('FloorplanGeneration was not found.');
+            }
+
+            return {
+                jobId,
+                status: floorplanGeneration.status,
+                progress: floorplanGeneration.progress,
+                estimatedTime: floorplanGeneration.estimatedTime
+            };
+        } catch (err) {
+            if (err instanceof FloorplanGenerationError) {
+                this.logger.warn(`Failed to get floorplanGeneration status: ${err.message}`);
+            } else {
+                this.logger.error('getFloorplanGenerationStatus() Unexpected error', err);
+            }
+            throw err;
+        }
+    }
+
+    /**
+     * Get floorplan generation results.
+     *
+     * @param jobId - The unique identifier (UUID) of the floor plan generation job
+     * @param authPayload - The authorization token payload of the requester
+     * @returns Floorplan generation results
+     */
+    public async getFloorplanGenerationResults(
+        jobId: string,
+        authPayload: AuthTokenPayload
+    ): Promise<{ history: HistoryInfo | null; historyChildren: HistoryChildInfo[] }> {
+        this.logger.debug(`getFloorplanGenerationResults(${jobId})`);
+
+        try {
+            const floorplanGeneration = await this.dbMgr.getFloorPlanGenerationJob(jobId);
+            if (!floorplanGeneration || !floorplanGeneration.historyParentId) {
+                throw new FloorplanGenerationError('FloorplanGeneration was not found.');
+            }
+            if (AppConstant.FLOORPLAN.GENERATION.STATUS.COMPLETED !== floorplanGeneration.status) {
+                throw new FloorplanGenerationNotCompletedError(
+                    'FloorplanGeneration is not completed.'
+                );
+            }
+
+            const historyParent = await this.dbMgr.getHistoryParent(floorplanGeneration.historyParentId);
+            const historyChildren = await this.dbMgr.getHistoryChildren(
+                floorplanGeneration.historyParentId,
+                floorplanGeneration.requestUserId,
+                authPayload
+            );
+
+            return {
+                history: historyParent,
+                historyChildren: historyChildren
+            };
+        } catch (err) {
+            if (err instanceof FloorplanGenerationError) {
+                this.logger.warn(`Failed to get floorplanGeneration results: ${err.message}`);
+            } else if (err instanceof FloorplanGenerationNotCompletedError) {
+                this.logger.warn(`Failed to get floorplanGeneration results: ${err.message}`);
+            } else {
+                this.logger.error('getFloorplanGenerationResults() Unexpected error', err);
+            }
+            throw err;
+        }
+    }
+
+    /**
+     * Toggles the favorite status of a floorplan.
+     *
+     * @param historyChildId - The ID of the child history record
+     * @param isPatternFavorite - Whether the pattern is a favorite.
+     */
+    public async toggleHistoryChildFavorite(
+        historyChildId: number,
+        isPatternFavorite: boolean
+    ): Promise<void> {
+        this.logger.debug(`toggleHistoryChildFavorite(${historyChildId}, ${isPatternFavorite})`);
+
+        try {
+            await this.dbMgr.toggleHistoryChildFavorite(historyChildId, isPatternFavorite);
+        } catch (err) {
+            this.logger.error('toggleHistoryChildFavorite() Unexpected error', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Deletes a floorplan.
+     *
+     * @param historyChildId - The ID of the child history record
+     */
+    public async removeHistoryChild(historyChildId: number): Promise<void> {
+        this.logger.debug(`removeHistoryChild(${historyChildId})`);
+
+        try {
+            await this.dbMgr.removeHistoryChild(historyChildId);
+        } catch (err) {
+            this.logger.error('removeHistoryChild() Unexpected error', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Regenerate floorplan.
+     *
+     * @param historyParentId - The ID of the parent history record
+     * @param userId - The ID of the user requesting the data
+     * @returns jobId
+     */
+    public async regenerateFloorplan(
+        historyParentId: number,
+        userId: number
+    ): Promise<{ jobId: string }> {
+        this.logger.debug(`regenerateFloorplan(${historyParentId}, ${userId})`);
+
+        try {
+            const historyParent = await this.dbMgr.getRegenerateHistoryParent(historyParentId);
+            if (!historyParent) {
+                throw new FloorplanGenerationError('HistoryParent was not found.');
+            }
+            const requestPayload: RequestPayload = {
+                title: historyParent.title ?? AppConstant.DEFAULT_NULL_STRING,
+                clientName: historyParent.customerName ?? AppConstant.DEFAULT_NULL_STRING,
+                layout_conditions: historyParent.conditions
+            };
+
+            return await prisma.$transaction(async (tx) => {
+                const { jobId } = await this.createFloorplanGenerationJob(
+                    requestPayload,
+                    userId,
+                    tx
+                );
+                await this.dbMgr.updateHistoryParentIdForFloorPlanJob(jobId, historyParentId, tx);
+                return { jobId };
+            });
+        } catch (err) {
+            if (err instanceof FloorplanGenerationError) {
+                this.logger.warn(`Failed to get floorplan regeneration: ${err.message}`);
+            } else {
+                this.logger.error('regenerateFloorplan() Unexpected error', err);
+            }
+            throw err;
+        }
+    }
+
+    /**
+     * Updates a floorplan.
+     *
+     * @param historyChildId - The ID of the child history record
+     * @param updateFloorplanData - Update floorplan data for historyChild
+     */
+    public async updateFloorplan(
+        historyChildId: number,
+        updateFloorplanData: HistoryChildFloorplanData
+    ): Promise<void> {
+        this.logger.debug(
+            `updateFloorplan(${historyChildId}, ${JSON.stringify(updateFloorplanData)})`
+        );
+
+        try {
+            await this.dbMgr.updateHistoryChildFloorplanAndDownload(
+                historyChildId,
+                updateFloorplanData
+            );
+        } catch (err) {
+            this.logger.error('updateFloorplan() Unexpected error', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Gets a list of equipment images.
+     *
+     * @returns List of equipment images with name and URL
+     */
+    public async getFloorplanImages(): Promise<FloorplanImage> {
+        this.logger.debug('getFloorplanImages()');
+
+        try {
+            const publicDir = path.join(__dirname, '..', 'public');
+
+            try {
+                await fs.access(publicDir);
+            } catch {
+                return {
+                    images: []
+                };
+            }
+
+            const files = await fs.readdir(publicDir);
+
+            const imageExtensions = ['.png', '.jpg', '.jpeg'];
+            const imageFiles = files.filter((file) =>
+                imageExtensions.includes(path.extname(file).toLowerCase())
+            );
+
+            const images = imageFiles.map((file) => ({
+                name: file,
+                url: `http://localhost:${env.WEB_SERVER_PORT}/backend/public/${file}`
+            }));
+
+            return { images };
+        } catch (err) {
+            this.logger.error('getFloorplanImages() Unexpected error', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Uploads an equipment image.
+     *
+     * @param file - The uploaded file from multer
+     */
+    public async uploadFloorplanImage(file: Express.Multer.File): Promise<{ url: string; name: string }> {
+        this.logger.debug(`uploadFloorplanImage(${file.originalname})`);
+
+        try {
+            const publicDir = path.join(__dirname, '..', 'public');
+
+            try {
+                await fs.access(publicDir);
+            } catch {
+                await fs.mkdir(publicDir, { recursive: true });
+            }
+
+            const allowedExtensions = ['.png', '.jpg', '.jpeg'];
+            const fileExt = path.extname(file.originalname).toLowerCase();
+
+            if (!allowedExtensions.includes(fileExt)) {
+                throw new FloorplanImageError('Invalid file format. Only image files are allowed.');
+            }
+
+            const maxFileSize = AppConstant.FLOORPLAN.IMAGE.MAX_FILE_SIZE; // 5MB
+            if (file.size > maxFileSize) {
+                throw new FloorplanImageError('File size exceeds 5MB limit.');
+            }
+
+            const decodedFilename = Buffer.from(file.originalname, 'latin1').toString('utf-8');
+            const targetPath = path.join(publicDir, decodedFilename);
+            try {
+                await fs.access(targetPath);
+                throw new FloorplanImageError('File with the same name already exists.');
+            } catch (err) {
+                if (err instanceof FloorplanImageError) {
+                    throw err;
+                }
+            }
+
+            await fs.writeFile(targetPath, file.buffer);
+            this.logger.info(`Image uploaded successfully: ${decodedFilename}`);
+
+            const imageUrl = `http://localhost:${env.WEB_SERVER_PORT}/backend/public/${encodeURIComponent(decodedFilename)}`;
+            return { url: imageUrl, name: decodedFilename };
+        } catch (err) {
+            if (err instanceof FloorplanImageError) {
+                this.logger.warn(`Upload image failed: ${err.message}`);
+            } else {
+                this.logger.error('uploadFloorplanImage() Unexpected error', err);
+            }
+            throw err;
+        }
+    }
+
+    /**
+     * Deletes an equipment image.
+     *
+     * @param name - The name of the image file to delete
+     */
+    public async deleteFloorplanImage(name: string): Promise<void> {
+        this.logger.debug(`deleteFloorplanImage('${name}')`);
+
+        try {
+            const publicDir = path.join(__dirname, '..', 'public');
+            const targetPath = path.join(publicDir, name);
+
+            const normalizedPath = path.normalize(targetPath);
+            if (!normalizedPath.startsWith(publicDir)) {
+                throw new FloorplanImageError('Invalid file path.');
+            }
+
+            try {
+                await fs.access(targetPath);
+            } catch {
+                throw new FloorplanImageError('File not found.');
+            }
+
+            const stats = await fs.stat(targetPath);
+            if (!stats.isFile()) {
+                throw new FloorplanImageError('Target is not a file.');
+            }
+
+            await fs.unlink(targetPath);
+            this.logger.info(`Image deleted successfully: ${name}`);
+        } catch (err) {
+            if (err instanceof FloorplanImageError) {
+                this.logger.warn(`Delete image failed: ${err.message}`);
+            } else {
+                this.logger.error('deleteFloorplanImage() Unexpected error', err);
+            }
+            throw err;
+        }
+    }
+
+    /**
+     * Completes a floor plan generation job.
+     *
+     * @param jobId - The unique identifier of the floor plan generation job
+     * @param result - The result data from the Python service
+     */
+    public async completeFloorplanGenerationJob(
+        jobId: string,
+        result: any
+    ): Promise<void> {
+        this.logger.debug(`completeFloorplanGenerationJob(${jobId})`);
+        try {
+            await this.dbMgr.updateFloorplanJobResult(jobId, result);
+            this.logger.info(`Job ${jobId} has been completed.`);
+
+            // Process the results and create history records
+            const floorplanGeneration = await this.dbMgr.getFloorPlanGenerationJob(jobId);
+            if (!floorplanGeneration) {
+                throw new FloorplanGenerationError('FloorplanGeneration was not found after completion.');
+            }
+
+            let historyParentId: number;
+            const layouts = [
+                floorplanGeneration.resultPayload.layout_1,
+                floorplanGeneration.resultPayload.layout_2,
+                floorplanGeneration.resultPayload.layout_3
+            ];
+
+            await prisma.$transaction(async (tx) => {
+                if (floorplanGeneration.historyParentId) {
+                    // Regenerate
+                    historyParentId = floorplanGeneration.historyParentId;
+                } else {
+                    // New generate
+                    const createHistoryParentData = {
+                        title: floorplanGeneration.requestPayload.title,
+                        conditions: floorplanGeneration.requestPayload.layout_conditions,
+                        customerName: floorplanGeneration.requestPayload.clientName,
+                        createdById: floorplanGeneration.requestUserId,
+                        updatedId: floorplanGeneration.requestUserId
+                    };
+                    historyParentId = await this.dbMgr.createHistoryParent(
+                        createHistoryParentData,
+                        tx
+                    );
+
+                    await this.dbMgr.updateHistoryParentIdForFloorPlanJob(
+                        jobId,
+                        historyParentId,
+                        tx
+                    );
+                }
+                const historyChildrenData = layouts.map((layout) => {
+                    const { type, ...floorplanData } = layout;
+
+                    return {
+                        historyParentId,
+                        patternName: type,
+                        floorplanData,
+                        tag: layout.tag.join(','),
+                        createdById: floorplanGeneration.requestUserId
+                    };
+                });
+                await this.dbMgr.createHistoryChildren(historyChildrenData, tx);
+            });
+
+        } catch (err) {
+            this.logger.error('completeFloorplanGenerationJob() Unexpected error', err);
             throw err;
         }
     }

@@ -13,6 +13,16 @@ import { Prisma, Role } from '@prisma/client';
 import { createLogger } from './logger';
 import { CompanyInfo, CreateCompanyDataInput, UpdateCompanyDataInput } from './Types/CompanyParam';
 import { HistoryChildInfo, HistoryInfo } from './Types/HistoryParam';
+import {
+    CreateFloorPlanDataInput,
+    CreateHistoryChildDataInput,
+    CreateHistoryParentDataInput,
+    FloorPlanGenerationJobInfor,
+    HistoryChildFloorplanData,
+    LayoutConditions,
+    RegenerateHistoryParent,
+    RequestPayload
+} from './Types/FloorplanParam';
 
 export default class DBMgr {
     private logger;
@@ -330,9 +340,62 @@ export default class DBMgr {
             companyId: history.createdBy.company.id,
             companyName: history.createdBy.company.name,
             userId: history.createdBy.id,
-            userName: history.createdBy.name ?? null,
-            createdBy: undefined
+            userName: history.createdBy.name ?? null
         }));
+    }
+
+    /**
+     * Gets a history parent record by its ID.
+     *
+     * @param historyParentId - The ID of the parent history record
+     * @returns The history parent record, or null if not found
+     */
+    public async getHistoryParent(historyParentId: number): Promise<HistoryInfo | null> {
+        this.logger.debug(`getHistoryParent(${historyParentId})`);
+
+        const history = await prisma.historyParent.findUnique({
+            where: {
+                id: historyParentId,
+                deleted: false
+            },
+            select: {
+                id: true,
+                title: true,
+                totalFavoriteCount: true,
+                customerName: true,
+                createdAt: true,
+                createdById: true,
+                updatedAt: true,
+                updatedId: true,
+                conditions: true,
+                createdBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                        company: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!history) {
+            return null;
+        }
+
+        return {
+            ...history,
+            favoriteCount: history.totalFavoriteCount,
+            updatedById: history.updatedId,
+            companyId: history.createdBy.company.id,
+            companyName: history.createdBy.company.name,
+            userId: history.createdBy.id,
+            userName: history.createdBy.name ?? null
+        };
     }
 
     /**
@@ -347,7 +410,7 @@ export default class DBMgr {
         historyParentId: number,
         userId: number,
         authPayload: AuthTokenPayload
-    ): Promise<HistoryChildInfo[] | null> {
+    ): Promise<HistoryChildInfo[]> {
         this.logger.debug(
             `getHistoryChildren(${historyParentId}, ${userId}, ${JSON.stringify(authPayload)}})`
         );
@@ -432,6 +495,251 @@ export default class DBMgr {
                 where: { companyId },
                 data: { deleted: true }
             });
+        });
+    }
+
+    /**
+     * Creates a new floor plan generation job in the database.
+     *
+     * @param createData - The input data required to create the floor plan generation job
+     * @param tx - Optional Prisma transaction client
+     */
+    public async createFloorPlanGenerationJob(
+        createData: CreateFloorPlanDataInput,
+        tx?: Prisma.TransactionClient
+    ): Promise<void> {
+        this.logger.debug(`createFloorPlanGenerationJob(${JSON.stringify(createData)})`);
+
+        const client = tx || prisma;
+        await client.floorPlanGenerationJob.create({
+            data: { ...createData }
+        });
+    }
+
+    /**
+     * Gets a floor plan generation job by its ID.
+     *
+     * @param jobId - The unique identifier (UUID) of the floor plan generation job
+     * @returns Floorplan generation information
+     */
+    public async getFloorPlanGenerationJob(
+        jobId: string
+    ): Promise<FloorPlanGenerationJobInfor | null> {
+        this.logger.debug(`getFloorPlanGenerationJob(${jobId})`);
+
+        const result = await prisma.floorPlanGenerationJob.findUnique({
+            select: {
+                jobId: true,
+                status: true,
+                progress: true,
+                estimatedTime: true,
+                requestPayload: true,
+                resultPayload: true,
+                historyParentId: true,
+                requestUserId: true
+            },
+            where: {
+                jobId
+            }
+        });
+
+        if (!result) {
+            return null;
+        }
+        return {
+            ...result,
+            requestPayload: result.requestPayload as RequestPayload
+        };
+    }
+
+    /**
+     * Creates a new history parent record in the database.
+     *
+     * @param createData - The data required to create the history parent record
+     * @param tx - Optional Prisma transaction client
+     * @returns The ID of the newly created history parent record
+     */
+    public async createHistoryParent(
+        createData: CreateHistoryParentDataInput,
+        tx?: Prisma.TransactionClient
+    ): Promise<number> {
+        this.logger.debug(`createHistoryParent(${JSON.stringify(createData)})`);
+
+        const client = tx || prisma;
+        const newHistoryParent = await client.historyParent.create({
+            data: { ...createData }
+        });
+
+        return newHistoryParent.id;
+    }
+
+    /**
+     * Creates multiple history child records in the database.
+     *
+     * @param createDataList - An array of history child data to be created
+     * @param tx - Optional Prisma transaction client
+     */
+    public async createHistoryChildren(
+        createDataList: CreateHistoryChildDataInput[],
+        tx?: Prisma.TransactionClient
+    ): Promise<void> {
+        this.logger.debug(`createHistoryChildren(${JSON.stringify(createDataList)})`);
+
+        const client = tx || prisma;
+        await client.historyChild.createMany({
+            data: createDataList
+        });
+    }
+
+    /**
+     * Updates the historyParentId for a specific floor plan generation job.
+     *
+     * @param jobId - The unique identifier of the floor plan generation job to update
+     * @param historyParentId - The ID of the history parent record to associate with the job
+     * @param tx - Optional Prisma transaction client
+     */
+    public async updateHistoryParentIdForFloorPlanJob(
+        jobId: string,
+        historyParentId: number,
+        tx?: Prisma.TransactionClient
+    ): Promise<void> {
+        this.logger.debug(`updateHistoryParentIdForFloorPlanJob(${jobId}, ${historyParentId})`);
+
+        const client = tx || prisma;
+        await client.floorPlanGenerationJob.update({
+            where: { jobId },
+            data: { historyParentId }
+        });
+    }
+
+    /**
+     * Updates the favorite status of a history child record.
+     *
+     * @param historyChildId - The ID of the history child record to update
+     * @param isPatternFavorite - Whether the history child should be marked as favorite
+     */
+    public async toggleHistoryChildFavorite(
+        historyChildId: number,
+        isPatternFavorite: boolean
+    ): Promise<void> {
+        this.logger.debug(`toggleHistoryChildFavorite(${historyChildId}, ${isPatternFavorite})`);
+
+        await prisma.$transaction(async (tx) => {
+            // 1. Update HistoryChild's isPatternFavorite status
+            await tx.historyChild.update({
+                where: { id: historyChildId },
+                data: { isPatternFavorite }
+            });
+
+            // 2. Get the historyParentId of the updated HistoryChild
+            const updatedChild = await tx.historyChild.findUnique({
+                where: { id: historyChildId },
+                select: { historyParentId: true }
+            });
+
+            if (updatedChild?.historyParentId) {
+                // 3. Count the number of favorited HistoryChild records for this HistoryParent
+                const totalFavoriteCount = await tx.historyChild.count({
+                    where: {
+                        historyParentId: updatedChild.historyParentId,
+                        isPatternFavorite: true,
+                        deleted: false
+                    }
+                });
+
+                // 4. Update the totalFavoriteCount in the corresponding HistoryParent record
+                await tx.historyParent.update({
+                    where: { id: updatedChild.historyParentId },
+                    data: { totalFavoriteCount }
+                });
+            }
+        });
+    }
+
+    /**
+     * Removes a history child record by marking it as deleted.
+     *
+     * @param historyChildId - The ID of the history child record to remove
+     */
+    public async removeHistoryChild(historyChildId: number): Promise<void> {
+        this.logger.debug(`removeHistoryChild(${historyChildId})`);
+
+        await prisma.historyChild.update({
+            where: { id: historyChildId },
+            data: { deleted: true }
+        });
+    }
+
+    /**
+     * Get historyParent information.
+     *
+     * @param historyParentId - The ID of the history child record to remove
+     * @returns HistoryParent information
+     */
+    public async getRegenerateHistoryParent(
+        historyParentId: number
+    ): Promise<RegenerateHistoryParent | null> {
+        this.logger.debug(`getRegenerateHistoryParent(${historyParentId})`);
+
+        const historyParent = await prisma.historyParent.findUnique({
+            select: {
+                title: true,
+                customerName: true,
+                conditions: true
+            },
+            where: {
+                id: historyParentId,
+                deleted: false
+            }
+        });
+
+        if (!historyParent) {
+            return null;
+        }
+
+        return {
+            ...historyParent,
+            conditions: historyParent.conditions as LayoutConditions
+        };
+    }
+
+    /**
+     * Updates a floorplan.
+     *
+     * @param historyChildId - The ID of the history child record to remove
+     * @param updateFloorplanData - Update floorplan data for historyChild
+     */
+    public async updateHistoryChildFloorplanAndDownload(
+        historyChildId: number,
+        updateFloorplanData: HistoryChildFloorplanData
+    ): Promise<void> {
+        this.logger.debug(`updateHistoryChildFloorplanAndDownload(${historyChildId})`);
+
+        await prisma.historyChild.update({
+            where: { id: historyChildId },
+            data: {
+                floorplanData: updateFloorplanData,
+                isDownloaded: true
+            }
+        });
+    }
+
+    /**
+     * Updates the result of a floor plan generation job.
+     *
+     * @param jobId - The unique identifier of the floor plan generation job
+     * @param resultPayload - The result data from the Python service
+     */
+    public async updateFloorplanJobResult(jobId: string, resultPayload: any): Promise<void> {
+        this.logger.debug(`updateFloorplanJobResult(${jobId})`);
+
+        await prisma.floorPlanGenerationJob.update({
+            where: { jobId },
+            data: {
+                status: 'completed',
+                progress: 100,
+                resultPayload: resultPayload
+            }
         });
     }
 }

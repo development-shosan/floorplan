@@ -1,19 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { History, HistoryChildren } from "@/constants/history";
+import {
+  dummyHistoryChildren,
+  History,
+  HistoryChildren,
+} from "@/constants/history";
 import { ArrowLeftIcon, HomeIcon } from "@heroicons/react/16/solid";
 import { StarIcon as StarOutline } from "@heroicons/react/24/outline";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import { TrashIcon } from "@heroicons/react/24/solid";
 import { LoginResponse, useUser } from "@/hooks/userContext";
 import { UserRole } from "@/constants/roles";
-import {
-  deletePlan,
-  getHistoryChildren,
-  regeneratePlan,
-  togglePlanFavorite,
-} from "@/lib/api";
+import { deletePlan, regeneratePlan, togglePlanFavorite } from "@/lib/api";
 import LoadingView from "./LoadingView";
 import FloorPlanViewer from "./FloorPlanViewer";
 import HistoryDetail from "./HistoryDetail";
@@ -48,9 +47,10 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
 
       setLoading(true);
       // 対応履歴詳細API
-      const response = await getHistoryChildren(user.id, history);
-      const data: HistoryChildren[] = response.historyChildren;
-      setHistoryChildren(data);
+      // const response = await getHistoryChildren(user.id, history);
+      // const data: HistoryChildren[] = response.historyChildren;
+      // setHistoryChildren(data);
+      setHistoryChildren(dummyHistoryChildren);
     } catch (error) {
       console.error(error);
       alert("対応履歴詳細の取得に失敗しました");
@@ -184,15 +184,14 @@ const HistoryChild: React.FC<HistoryChildProps> = ({
           )}
 
           <div className="space-y-6">
-            {historyChildren.map((child) => (
+            {historyChildren.map((child, index) => (
               <ChildCard
-                key={child.id}
+                key={index}
                 child={child}
                 user={user}
                 onDetailClick={handleGoToDetail}
                 setHistoryChildren={setHistoryChildren}
                 historyChildren={historyChildren}
-                fetchHistoryChildren={fetchHistoryChildren}
               />
             ))}
           </div>
@@ -208,13 +207,18 @@ const ChildCard: React.FC<{
   onDetailClick: (child: HistoryChildren) => void;
   setHistoryChildren: React.Dispatch<React.SetStateAction<HistoryChildren[]>>;
   historyChildren: HistoryChildren[];
-  fetchHistoryChildren: () => Promise<void>;
-}> = ({ child, user, onDetailClick, setHistoryChildren, historyChildren, fetchHistoryChildren }) => {
+}> = ({ child, user, onDetailClick, setHistoryChildren, historyChildren }) => {
   // プランお気に入り登録/解除API
   const handleFavoriteToggle = async (child: HistoryChildren) => {
     try {
       await togglePlanFavorite(child);
-      await fetchHistoryChildren(); // Re-fetch data after update
+      setHistoryChildren(
+        historyChildren.map((c) =>
+          c.id === child.id
+            ? { ...c, isPatternFavorite: !c.isPatternFavorite }
+            : c
+        )
+      );
     } catch (error) {
       console.error(error);
 
@@ -257,7 +261,7 @@ const ChildCard: React.FC<{
 
   return (
     <div className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm">
-      <h2 className="text-xl font-semibold mb-4">{child.patternName}</h2>
+      <h2 className="text-xl font-semibold mb-4">{child.floorplanData.type}</h2>
       <div className="relative mb-6 p-2 bg-gray-100 rounded-lg overflow-hidden shadow-inner pointer-events-none">
         {child.floorplanData ? (
           <FloorPlanViewer originalData={child.floorplanData} />

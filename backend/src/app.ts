@@ -4,7 +4,13 @@
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import DSMgr from './DSMgr';
-import { UserModificationError, LoginError } from './ApplicationErrors';
+import {
+    UserModificationError,
+    LoginError,
+    FloorplanGenerationError,
+    FloorplanGenerationNotCompletedError,
+    FloorplanImageError
+} from './ApplicationErrors';
 import morgan from 'morgan';
 import cors from 'cors';
 import { body, param } from 'express-validator';
@@ -13,11 +19,20 @@ import { validatorErrorChecker } from './middlewares/validator.middleware';
 import { AuthTokenPayload } from './Types/LoginParam';
 import { env } from '../env';
 import { Role } from '@prisma/client';
+import multer from 'multer';
+import { AppConstant } from './SpecificCommons';
+import path from 'path';
 
 const app = express();
 const router = express.Router();
 const PORT = env.WEB_SERVER_PORT;
 const dsMgr = new DSMgr();
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: AppConstant.FLOORPLAN.IMAGE.MAX_FILE_SIZE // 5MB
+    }
+});
 
 // cross-origin resource sharing
 app.use(
@@ -27,6 +42,8 @@ app.use(
 );
 // JSONボディパーサーを有効にする
 app.use(express.json());
+// Serve static files from the public directory
+app.use('/backend/public', express.static(path.join(__dirname, '..', 'public')));
 // HTTP log output
 app.use(morgan('dev'));
 // prefix URI
@@ -355,6 +372,7 @@ router.get(
     '/histories/:userId',
     [param('userId').exists().isNumeric()],
     refreshTokenIfValid,
+    validatorErrorChecker,
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             const authPayload: AuthTokenPayload | undefined = req.user;
@@ -384,6 +402,7 @@ router.get(
     [param('historyParentId').exists().isNumeric()],
     [param('userId').exists().isNumeric()],
     refreshTokenIfValid,
+    validatorErrorChecker,
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             const authPayload: AuthTokenPayload | undefined = req.user;
@@ -395,6 +414,378 @@ router.get(
             const userId: number = Number(req.params.userId);
             const result = await dsMgr.getHistoryChildren(historyParentId, userId, authPayload);
             res.json(result);
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Floorplan generation request.
+ *      Request param:
+ *          curl -i -X POST -H "Content-Type: application/json" -H "Authorization: TOKEN"
+ *          -d "{\"title\": \"佐藤様邸間取りプラン\", \"clientName\": \"佐藤太郎\",
+ *          \"layout_conditions\": {
+ *              \"family_composition\": {\"value\": \"4\", \"unit\": \"people\"},
+ *              \"number_of_floors\": {\"value\": \"2\"},
+ *              \"frontage\": {\"value\": \"20\", \"unit\": \"pit\"},
+ *              \"depth\": {\"value\": \"12\", \"unit\": \"pit\"},
+ *              \"desired_LDK_area\": {\"value\": \"18\", \"unit\": \"tatami\"},
+ *              \"number_of_rooms\": {\"value\": \"3\", \"unit\": \"rooms\"},
+ *              \"number_of_toilets\": {\"value\": \"2\", \"unit\": \"units\"},
+ *              \"commitment_flow_lines\": {\"value\": \"玄関からキッチンまで動線を短く\", \"unit\": \"text\"}
+ *          }}"
+ *          http://localhost:4000/api/v1/floorplans
+ *
+ *      Response: jobId
+ *
+ */
+router.post(
+    '/floorplans',
+    [
+        body('title').trim().notEmpty().isString(),
+        body('clientName').trim().notEmpty().isString(),
+        body('layout_conditions').notEmpty().isObject(),
+        body('layout_conditions.family_composition.value').trim().notEmpty().isString(),
+        body('layout_conditions.family_composition.unit').trim().notEmpty().isString(),
+        body('layout_conditions.number_of_floors.value').trim().notEmpty().isString(),
+        body('layout_conditions.frontage.value').trim().notEmpty().isString(),
+        body('layout_conditions.frontage.unit').trim().notEmpty().isString(),
+        body('layout_conditions.depth.value').trim().notEmpty().isString(),
+        body('layout_conditions.depth.unit').trim().notEmpty().isString(),
+        body('layout_conditions.desired_LDK_area.value').trim().notEmpty().isString(),
+        body('layout_conditions.desired_LDK_area.unit').trim().notEmpty().isString(),
+        body('layout_conditions.number_of_rooms.value').trim().notEmpty().isString(),
+        body('layout_conditions.number_of_rooms.unit').trim().notEmpty().isString(),
+        body('layout_conditions.number_of_toilets.value').trim().notEmpty().isString(),
+        body('layout_conditions.number_of_toilets.unit').trim().notEmpty().isString(),
+        body('layout_conditions.commitment_flow_lines.value').optional().isString(),
+        body('layout_conditions.commitment_flow_lines.unit').optional().isString()
+    ],
+    refreshTokenIfValid,
+    authorizeRoles(Role.MEMBER),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const authPayload: AuthTokenPayload | undefined = req.user;
+            if (!authPayload) {
+                res.sendStatus(403);
+                return;
+            }
+            const userId: number = authPayload.userId;
+            const jobId = await dsMgr.createFloorplanGenerationJob(req.body, userId);
+            res.json(jobId);
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Get floorplan generation status.
+ *      Request param:
+ *          curl -i -X GET -H "Authorization: TOKEN"
+ *          http://localhost:4000/api/v1/floorplans/status/550e8400-e29b-41d4-a716-446655440000
+ *
+ *      Response: Floorplan generation status information
+ *
+ */
+router.get(
+    '/floorplans/status/:jobId/',
+    [param('jobId').trim().notEmpty().isString().isLength({ min: 36, max: 36 })],
+    refreshTokenIfValid,
+    authorizeRoles(Role.MEMBER),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const result = await dsMgr.getFloorplanGenerationStatus(req.params.jobId);
+            res.json(result);
+        } catch (err) {
+            if (err instanceof FloorplanGenerationError) {
+                res.sendStatus(404);
+            } else {
+                res.sendStatus(500);
+            }
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Get floorplan generation results.
+ *      Request param:
+ *          curl -i -X GET -H "Authorization: TOKEN"
+ *          http://localhost:4000/api/v1/floorplans/results/550e8400-e29b-41d4-a716-446655440000
+ *
+ *      Response: Floorplan generation results
+ *
+ */
+router.get(
+    '/floorplans/results/:jobId/',
+    [param('jobId').trim().notEmpty().isString().isLength({ min: 36, max: 36 })],
+    refreshTokenIfValid,
+    authorizeRoles(Role.MEMBER),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const authPayload: AuthTokenPayload | undefined = req.user;
+            if (!authPayload) {
+                res.sendStatus(403);
+                return;
+            }
+            const result = await dsMgr.getFloorplanGenerationResults(req.params.jobId, authPayload);
+            res.json(result);
+        } catch (err) {
+            if (err instanceof FloorplanGenerationError) {
+                res.sendStatus(404);
+            } else if (err instanceof FloorplanGenerationNotCompletedError) {
+                res.sendStatus(425);
+            } else {
+                res.sendStatus(500);
+            }
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Toggles the favorite status of a floorplan.
+ *      Request param:
+ *          curl -i -X PUT -H "Content-Type: application/json" -H "Authorization: TOKEN"
+ *          -d "{\"isPatternFavorite\": true}"
+ *          http://localhost:4000/api/v1/floorplans/plans/5/favorite
+ *
+ */
+router.put(
+    '/floorplans/plans/:historyChildId/favorite',
+    [
+        param('historyChildId').exists().isNumeric(),
+        body('isPatternFavorite').notEmpty().isBoolean()
+    ],
+    refreshTokenIfValid,
+    authorizeRoles(Role.MEMBER),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const historyChildId = Number(req.params.historyChildId);
+            await dsMgr.toggleHistoryChildFavorite(historyChildId, req.body.isPatternFavorite);
+            res.sendStatus(200);
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Deletes a floorplan.
+ *      Request param:
+ *          curl -i -X DELETE -H "Authorization: TOKEN"
+ *          http://localhost:4000/api/v1/floorplans/plans/5
+ *
+ */
+router.delete(
+    '/floorplans/plans/:historyChildId',
+    [param('historyChildId').exists().isNumeric()],
+    refreshTokenIfValid,
+    authorizeRoles(Role.MEMBER),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const historyChildId = Number(req.params.historyChildId);
+            await dsMgr.removeHistoryChild(historyChildId);
+            res.sendStatus(200);
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Regenerate floorplan.
+ *      Request param:
+ *          curl -i -X POST -H "Authorization: TOKEN"
+ *          http://localhost:4000/api/v1/floorplans/regeneration/5
+ *
+ *      Response: jobId
+ *
+ */
+router.post(
+    '/floorplans/regeneration/:historyParentId',
+    [param('historyParentId').exists().isNumeric()],
+    refreshTokenIfValid,
+    authorizeRoles(Role.MEMBER),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const authPayload: AuthTokenPayload | undefined = req.user;
+            if (!authPayload) {
+                res.sendStatus(403);
+                return;
+            }
+            const historyParentId: number = Number(req.params.historyParentId);
+            const userId: number = authPayload.userId;
+            const jobId = await dsMgr.regenerateFloorplan(historyParentId, userId);
+            res.json(jobId);
+        } catch (err) {
+            if (err instanceof FloorplanGenerationError) {
+                res.sendStatus(404);
+            } else {
+                res.sendStatus(500);
+            }
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Updates a floorplan.
+ *      Request param:
+ *          curl -i -X PUT -H "Content-Type: application/json" -H "Authorization: TOKEN"
+ *          -d "{\"floorplanData\": {
+ *              \"first_floor_area\": 120.5,
+ *              \"second_floor_area\": 95.3,
+ *              \"total_floor_area\": 215.8,
+ *              \"tag\": [\"hogehoge\", \"naninani\", \"wowo\"],
+ *              \"type\": \"リビングが広いプラン\",
+ *              \"1\": {
+ *                  \"rooms\": [
+ *                      {\"name\": \"エントランス\", \"x\": 6.0, \"y\": 0.0, \"width\": 2.0, \"height\": 2.0}
+ *                  ],
+ *                  \"objects\": [
+ *                      {\"name\": \"シンク\", \"x\": 3.5, \"y\": 4.5, \"width\": 1.0, \"height\": 2.0, \"imageUrl\": \"https://test/images/sample.jpg\"}
+ *                  ]
+ *              },
+ *              \"2\": {
+ *                  \"rooms\": [
+ *                      {\"name\": \"廊下\", \"x\": 1.0, \"y\": 1.0, \"width\": 8.0, \"height\": 1.0}
+ *                  ],
+ *                  \"objects\": [
+ *                      {\"name\": \"ベッド\", \"x\": 8.5, \"y\": 2.5, \"width\": 2.5, \"height\": 1.5, \"imageUrl\": \"https://test/images/sample.jpg\"}
+ *                  ]
+ *              }
+ *          }}"
+ *          http://localhost:4000/api/v1/floorplans/update/5
+ *
+ */
+router.put(
+    '/floorplans/update/:historyChildId',
+    [param('historyChildId').exists().isNumeric(), body('floorplanData').notEmpty().isObject()],
+    refreshTokenIfValid,
+    authorizeRoles(Role.MEMBER),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const historyChildId = Number(req.params.historyChildId);
+            await dsMgr.updateFloorplan(historyChildId, req.body.floorplanData);
+            res.sendStatus(200);
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Gets a list of equipment images.
+ *      Request param:
+ *          curl -i -X GET -H "Authorization: TOKEN"
+ *          http://localhost:4000/api/v1/floorplans/images
+ *
+ *      Response: List of equipment images
+ *
+ */
+router.get(
+    '/floorplans/images',
+    refreshTokenIfValid,
+    authorizeRoles(Role.MEMBER),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const images = await dsMgr.getFloorplanImages();
+            res.json(images);
+        } catch (err) {
+            res.sendStatus(500);
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Uploads an equipment image.
+ *      Request param:
+ *          curl -i -X POST -H "Authorization: TOKEN" -F "image=@/path/to/椅子1_椅子.png"
+ *          http://localhost:4000/api/v1/floorplans/image
+ *
+ */
+router.post(
+    '/floorplans/image',
+    refreshTokenIfValid,
+    authorizeRoles(Role.MEMBER),
+    upload.single('image'),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            if (!req.file) {
+                res.status(400).json({ error: 'No image file provided' });
+                return;
+            }
+
+            const { url, name } = await dsMgr.uploadFloorplanImage(req.file);
+            res.status(200).json({ url, name });
+        } catch (err) {
+            if (err instanceof FloorplanImageError) {
+                res.sendStatus(400);
+            } else {
+                res.sendStatus(500);
+            }
+            return next(err);
+        }
+    }
+);
+
+/**
+ *  Deletes an equipment image.
+ *      Request param:
+ *          curl -i -X DELETE -H "Content-Type: application/json" -H "Authorization: TOKEN"
+ *          -d "{\"name\": \"テーブル3_テーブル.png\"}"
+ *          http://localhost:4000/api/v1/floorplans/image
+ *
+ */
+router.delete(
+    '/floorplans/image',
+    [body('name').trim().notEmpty().isString()],
+    refreshTokenIfValid,
+    authorizeRoles(Role.MEMBER),
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            await dsMgr.deleteFloorplanImage(req.body.name);
+            res.sendStatus(200);
+        } catch (err) {
+            if (err instanceof FloorplanImageError) {
+                res.sendStatus(400);
+            } else {
+                res.sendStatus(500);
+            }
+            return next(err);
+        }
+    }
+);
+
+/**
+ * Callback endpoint for floorplan generation completion.
+ */
+router.post(
+    '/floorplans/callback',
+    [body('jobId').notEmpty().isString(), body('result').notEmpty().isObject()],
+    validatorErrorChecker,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { jobId, result } = req.body;
+            await dsMgr.completeFloorplanGenerationJob(jobId, result);
+            res.sendStatus(200);
         } catch (err) {
             res.sendStatus(500);
             return next(err);
