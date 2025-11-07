@@ -259,7 +259,7 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
               日付
             </div>
             <div className="py-1 border-r border-b border-gray-400 bg-gray-100">
-              パータン
+              パターン
             </div>
             <div className="py-1 border-b border-gray-400 bg-gray-100 row-span-2"></div>
           </div>
@@ -267,7 +267,7 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
           <div className="grid grid-cols-[3fr_2fr_1fr_1fr_1fr] text-center">
             <div className="flex flex-col border-r border-gray-400">
               <input
-                className={`py-2 text-center ${
+                className={`py-2 text-center w-full min-w-0 ${
                   errors.title ? "border-red-500" : ""
                 }`}
                 value={title}
@@ -281,7 +281,7 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
             </div>
             <div className="flex flex-col border-r border-gray-400">
               <input
-                className={`py-2 text-center ${
+                className={`py-2 text-center w-full min-w-0 ${
                   errors.customerName ? "border-red-500" : ""
                 }`}
                 value={customerName}
@@ -296,7 +296,7 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
             <div className="flex flex-col border-r border-gray-400 items-center">
               <input
                 type="date"
-                className={`py-2 text-center w-full max-w-[50%] ${
+                className={`py-2 text-center w-full min-w-0 ${
                   errors.date ? "border-red-500" : ""
                 }`}
                 value={date}
@@ -309,7 +309,7 @@ const HistoryPreview: React.FC<HistoryPreviewProps> = ({
             </div>
             <div className="flex flex-col border-r border-gray-400">
               <input
-                className={`py-2 text-center ${
+                className={`py-2 text-center w-full min-w-0 ${
                   errors.patternName ? "border-red-500" : ""
                 }`}
                 value={patternName}
