@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PencilSquareIcon,
   UserIcon,
@@ -134,9 +134,13 @@ const UnitInputField: React.FC<UnitInputFieldProps> = ({
 
 interface MadoriPageProps {
   setActiveTab: (tab: string) => void;
+  resetSignal?: number;
 }
 
-const MadoriPage: React.FC<MadoriPageProps> = ({ setActiveTab }) => {
+const MadoriPage: React.FC<MadoriPageProps> = ({
+  setActiveTab,
+  resetSignal,
+}) => {
   const initialForm: FormState = {
     title: "",
     customerName: "",
@@ -155,6 +159,17 @@ const MadoriPage: React.FC<MadoriPageProps> = ({ setActiveTab }) => {
   const [showLoading, setShowLoading] = useState(false);
   const [loadingJobId, setLoadingJobId] = useState<string | null>(null);
   const [complete, setComplete] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (resetSignal && resetSignal > 0) {
+      setSelectedHistory(null);
+      setForm(initialForm);
+      setErrors({});
+      setShowLoading(false);
+      setLoadingJobId(null);
+      setComplete(false);
+    }
+  }, [resetSignal]);
 
   const pToMm = (pStr: string): string => {
     const pVal = parseFloat(pStr);
